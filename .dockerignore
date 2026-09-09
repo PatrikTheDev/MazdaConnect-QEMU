@@ -1,3 +1,4 @@
 **
 !docker/
 !docker/Dockerfile
+!docker/Software.Dockerfile

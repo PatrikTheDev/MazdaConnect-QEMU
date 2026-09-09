@@ -1,0 +1,17 @@
+#!/bin/sh
+export XDG_RUNTIME_DIR=/tmp/lab-wayland
+export WAYLAND_DISPLAY=wayland-0
+export EGL_PLATFORM=wayland
+export LIBGL_ALWAYS_SOFTWARE=1
+export GALLIUM_DRIVER=softpipe
+export EGL_LOG_LEVEL=debug
+export WAYLAND_DEBUG=1
+export LIBGL_DRIVERS_PATH=/lab-software/runtime/dri
+export __EGL_VENDOR_LIBRARY_FILENAMES=/lab-software/mesa.json
+export OPERA_HOME=/jci/opera/opera_home
+export OPERA_DIR=/jci/opera/opera_dir
+export FREETYPE_FONT_SET=YES
+export OPERA_FONTS=/jci/fonts/CHN
+export WAYLAND_IVI_SURFACE_ID=2
+export LD_LIBRARY_PATH=/lab-software/runtime:/jci/lib:/jci/opera/3rdpartylibs/freetype:/usr/lib/imx-mm/audio-codec:/usr/lib/imx-mm/parser:/usr/lib:/lib
+exec /lab-software/runtime/ld-linux.so.3 --library-path "$LD_LIBRARY_PATH" /jci/opera/opera "$@"

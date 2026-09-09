@@ -1,0 +1,22 @@
+name: mazda-qemu-software
+services:
+  lab:
+    image: mazda-qemu-software:local
+    build:
+      context: .
+      dockerfile: docker/Software.Dockerfile
+    init: true
+    working_dir: /workspace
+    volumes:
+      - .:/workspace:ro
+      - ./artifacts:/workspace/artifacts
+      - ./runs:/workspace/runs
+      - reference:/lab:ro
+      - software-data:/software
+    ports:
+      - "127.0.0.1:5901:5900"
+volumes:
+  reference:
+    external: true
+    name: mazda-qemu_lab-data
+  software-data:

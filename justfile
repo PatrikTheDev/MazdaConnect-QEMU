@@ -11,6 +11,40 @@ doctor:
 image-build:
     docker compose build lab
 
+software-image:
+    docker compose -f compose.software.yaml build lab
+
+software-shell:
+    docker compose -f compose.software.yaml run --rm lab bash
+
+# Build the Opera software guest and open its interactive serial shell.
+# Run between automated tests: the software build artifacts are shared.
+software-boot:
+    docker compose -f compose.software.yaml run --rm lab python3 scripts/software/build.py --opera
+    docker compose -f compose.software.yaml run --rm lab python3 scripts/software/interactive.py
+
+software-prepare:
+    docker compose -f compose.software.yaml run --rm lab python3 scripts/software/prepare.py
+
+software-build:
+    docker compose -f compose.software.yaml run --rm lab python3 scripts/software/build.py
+
+software-test: software-build
+    docker compose -f compose.software.yaml run --rm lab python3 scripts/software/check.py
+
+software-opera-test *args:
+    docker compose -f compose.software.yaml run --rm lab python3 scripts/software/build.py --opera
+    docker compose -f compose.software.yaml run --rm lab python3 scripts/software/check.py --opera "$@"
+
+software-browser-test:
+    just software-opera-test --test-page --inspect-surface
+
+software-video-test:
+    just software-opera-test --seconds 60 --debug-services --capture-sequence --verify-video
+
+software-inspect binary start end *args:
+    docker compose -f compose.software.yaml run --rm lab python3 scripts/software/inspect_abi.py "$@"
+
 shell:
     docker compose run --rm lab bash
 

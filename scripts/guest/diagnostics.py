@@ -18,14 +18,14 @@ def prepare_disk():
     return disk
 
 
-def sysroot(identifier):
+def sysroot(identifier, parent='/lab/guests'):
     home = Path('/lab/firmware') / identifier
     report = json.loads((Path('artifacts') / f'{identifier}.analysis.json').read_text())
     source = home / 'analysis/rootfs.tar.gz'
     with source.open('rb') as stream:
         if hashlib.file_digest(stream, 'sha256').hexdigest() != report['rootfs']['archive_sha256']:
             raise ValueError('Rootfs archive hash mismatch')
-    directory = Path(tempfile.mkdtemp(prefix='symbols-', dir='/lab/guests'))
+    directory = Path(tempfile.mkdtemp(prefix='symbols-', dir=parent))
     with tarfile.open(source) as archive:
         members = archive.getmembers()
         names = {m.name.removeprefix('./') for m in members}

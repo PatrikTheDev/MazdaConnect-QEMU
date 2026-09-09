@@ -1,0 +1,184 @@
+/* Software ARGB compositor output. No Vivante library or device dependencies. */
+#include "winston-abi.h"
+#include <stdio.h>
+#include <stdlib.h>
+#include <string.h>
+
+enum { WIDTH = 800, HEIGHT = 480 };
+static void save_pixels(const char *, const uint32_t *);
+struct pixels {
+    struct buffer base;
+    int width, height, format, premultiplied;
+    uint32_t *data;
+};
+struct software {
+    struct plugin plugin;
+    struct output output;
+    struct wl_event_source *timer;
+    int pending;
+    uint32_t frame[WIDTH * HEIGHT];
+};
+static struct software *owner(struct output *out) {
+    return (struct software *)((char *)out - offsetof(struct software, output));
+}
+static int width(struct output *out) { (void)out; return WIDTH; }
+static int height(struct output *out) { (void)out; return HEIGHT; }
+static void trigger(struct output *out) {
+    struct software *sw = owner(out);
+    if (!sw->pending && sw->timer) {
+        sw->pending = 1;
+        wl_event_source_timer_update(sw->timer, 16);
+    }
+}
+static void damage(struct output *out, int x, int y, int w, int h) {
+    (void)x; (void)y; (void)w; (void)h;
+    trigger(out); /* Repaint the complete output to preserve compositing order. */
+}
+static int pending(struct output *out) { return owner(out)->pending; }
+static struct buffer *create(struct output *out, int w, int h, int format, int premultiplied) {
+    (void)out;
+    if (w <= 0 || h <= 0 || w > 8192 || h > 8192 || (format != 0 && format != 1)) {
+        fprintf(stderr, "SOFTWARE unsupported buffer %dx%d format=%d\n", w, h, format);
+        return NULL;
+    }
+    struct pixels *p = calloc(1, sizeof(*p));
+    if (!p) return NULL;
+    p->data = calloc((size_t)w * h, 4);
+    if (!p->data) { free(p); return NULL; }
+    p->width = w; p->height = h; p->format = format; p->premultiplied = premultiplied;
+    return &p->base;
+}
+static struct buffer *wrap(struct output *out, struct wl_resource *resource) {
+    (void)out; (void)resource;
+    fputs("SOFTWARE cannot import a non-shared-memory buffer\n", stderr);
+    return NULL;
+}
+static void refresh(struct buffer *buffer) {
+    (void)buffer;
+    fputs("SOFTWARE unexpected refresh of a non-shared-memory buffer\n", stderr);
+    abort();
+}
+static void load(struct buffer *buffer, int dx, int dy, int sx, int sy,
+                 int w, int h, int stride, const void *data) {
+    struct pixels *p = (struct pixels *)buffer;
+    if (!data || dx < 0 || dy < 0 || sx < 0 || sy < 0 || w < 0 || h < 0 ||
+        dx + w > p->width || dy + h > p->height || stride < (sx + w) * 4) {
+        fputs("SOFTWARE invalid pixel upload\n", stderr); abort();
+    }
+    for (int y = 0; y < h; ++y)
+        memcpy(p->data + (dy+y)*p->width + dx, (const char *)data + (sy+y)*stride + sx*4, (size_t)w*4);
+    const char *capture = getenv("MAZDA_SOFTWARE_BUFFER");
+    if (capture && p->width == WIDTH && p->height == HEIGHT)
+        save_pixels(capture, p->data);
+}
+static void destroy_buffer(struct buffer *buffer) {
+    struct pixels *p = (struct pixels *)buffer;
+    if (buffer->resource) wl_list_remove(&buffer->listener_link);
+    free(p->data); free(p);
+}
+static int buffer_width(struct buffer *b) { return ((struct pixels *)b)->width; }
+static int buffer_height(struct buffer *b) { return ((struct pixels *)b)->height; }
+static uint32_t pixel(struct buffer *b, int x, int y) {
+    struct pixels *p = (struct pixels *)b;
+    if (x < 0 || y < 0 || x >= p->width || y >= p->height) return 0;
+    return p->data[y*p->width+x] | (p->format == 1 ? 0xff000000u : 0);
+}
+static int alpha(struct buffer *b) { return ((struct pixels *)b)->format == 0; }
+static void read_pixels(struct buffer *b, int x, int y, int w, int h, int stride, void *data) {
+    for (int row=0; row<h; ++row) for (int col=0; col<w; ++col)
+        ((uint32_t *)((char *)data+row*stride))[col] = pixel(b,x+col,y+row);
+}
+static void output_read(struct output *out, int x, int y, int w, int h, int stride, void *data) {
+    if (x<0 || y<0 || w<0 || h<0 || x+w>WIDTH || y+h>HEIGHT || stride<w*4) abort();
+    for (int row=0; row<h; ++row)
+        memcpy((char *)data+row*stride, owner(out)->frame+(y+row)*WIDTH+x, (size_t)w*4);
+}
+static void draw(struct output *out, void *view, int ox, int oy, void *surface) {
+    struct buffer *b = *(struct buffer **)((char *)surface + 52);
+    if (!b) return;
+    struct pixels *p = (struct pixels *)b;
+    unsigned opacity = *(unsigned *)((char *)view + 240);
+    if (!opacity) return;
+    struct software *sw = owner(out);
+    for (int y=0; y<HEIGHT; ++y) for (int x=0; x<WIDTH; ++x) {
+        int sx=x+out->x, sy=y+out->y;
+        if (!wlxs_view_transform_to_local(view, &sx, &sy)) continue;
+        sx-=ox; sy-=oy;
+        if (sx<0 || sy<0 || sx>=p->width || sy>=p->height) continue;
+        uint32_t src=pixel(b,sx,sy), dst=sw->frame[y*WIDTH+x];
+        unsigned a=(src>>24)*opacity/255, result=0xff000000u;
+        for (unsigned shift=0; shift<24; shift+=8) {
+            unsigned channel=(src>>shift)&255;
+            unsigned scaled=channel*(p->premultiplied ? opacity : a)/255;
+            unsigned blended=scaled+(((dst>>shift)&255)*(255-a)+127)/255;
+            result |= (blended>255 ? 255 : blended)<<shift;
+        }
+        sw->frame[y*WIDTH+x]=result;
+    }
+}
+static void save_pixels(const char *path, const uint32_t *pixels) {
+    char *temporary=malloc(strlen(path)+5);
+    if (!temporary) return;
+    sprintf(temporary,"%s.tmp",path);
+    FILE *file=fopen(temporary,"wb");
+    if (!file) { perror("software frame"); free(temporary); return; }
+    int complete=1;
+    fprintf(file,"P6\n%d %d\n255\n",WIDTH,HEIGHT);
+    unsigned char row[WIDTH*3];
+    for (int y=0; y<HEIGHT; ++y) {
+        for (int x=0; x<WIDTH; ++x) {
+            uint32_t c=pixels[y*WIDTH+x];
+            row[x*3]=c>>16; row[x*3+1]=c>>8; row[x*3+2]=c;
+        }
+        if (fwrite(row,1,sizeof(row),file)!=sizeof(row)) { perror("software frame write"); complete=0; break; }
+    }
+    if (fclose(file)) complete=0;
+    /* Readers must never capture a partially written frame. */
+    if (complete && rename(temporary,path)) perror("software frame rename");
+    remove(temporary);
+    free(temporary);
+}
+static int repaint(void *data) {
+    struct software *sw=data;
+    sw->pending=0;
+    wlxs_compositor_frame_update(sw->output.compositor,&sw->output);
+    memset(sw->frame,0,sizeof(sw->frame));
+    wlxs_output_repaint(&sw->output,draw);
+    const char *path=getenv("MAZDA_SOFTWARE_FRAME");
+    save_pixels(path ? path : "/tmp/software-frame.ppm",sw->frame);
+    wlxs_output_post_frames(&sw->output);
+    return 0;
+}
+static void bind_output(struct wl_resource *resource) {
+    struct output *out=wl_resource_get_user_data(resource);
+    wl_resource_post_event(resource,0,out->x,out->y,200,120,0,"Lab","Software",0);
+    wl_resource_post_event(resource,1,3,WIDTH,HEIGHT,60000);
+}
+static struct output_ops ops={
+    .width=width,.height=height,.damage=damage,.trigger=trigger,.flush=trigger,
+    .create=create,.wrap=wrap,.refresh=refresh,.load=load,.free=destroy_buffer,
+    .buffer_width=buffer_width,.buffer_height=buffer_height,.pixel=pixel,.alpha=alpha,
+    .read_pixels=read_pixels,.output_read_pixels=output_read,.pending=pending
+};
+static void destroy_plugin(struct plugin *plugin) {
+    struct software *sw=(struct software *)plugin;
+    if (sw->timer) wl_event_source_remove(sw->timer);
+    wlxs_output_fini(&sw->output);
+    free(sw);
+}
+struct {const char *version,*description; const char **help;} wlxs_software_plugin_info={
+    "0.13.5 141205","CPU shared-memory output for the Mazda QEMU lab",NULL
+};
+struct plugin *wlxs_software_plugin_init(void *compositor,void *config) {
+    (void)config;
+    struct software *sw=calloc(1,sizeof(*sw));
+    if (!sw) return NULL;
+    sw->plugin.destroy=destroy_plugin;
+    sw->output.ops=&ops;
+    if (!wlxs_output_init(&sw->output,compositor,bind_output)) {free(sw);return NULL;}
+    sw->timer=wl_event_loop_add_timer(wl_display_get_event_loop(sw->output.display),repaint,sw);
+    if (!sw->timer) {wlxs_output_fini(&sw->output);free(sw);return NULL;}
+    trigger(&sw->output);
+    fputs("SOFTWARE_OUTPUT_READY 800x480\n",stderr);
+    return &sw->plugin;
+}
