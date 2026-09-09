@@ -40,8 +40,8 @@ def alsa_adapter():
       rate {rate}
       format S16_LE
       channels 2
-      buffer_size 512
-      period_size 256
+      buffer_size 2048
+      period_size 512
     }}
   }}
 }}

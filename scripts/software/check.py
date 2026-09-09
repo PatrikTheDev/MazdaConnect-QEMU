@@ -31,6 +31,7 @@ parser.add_argument('--probe-audio', action='store_true', help='Trace original a
 parser.add_argument('--audio-devices', action='store_true', help='Attach two HDA cards and original ALSA loopbacks for audio diagnostics')
 parser.add_argument('--microphone-tone', type=int, default=0, help='Simulated microphone frequency in Hz; zero supplies silence')
 parser.add_argument('--audio-services', action='store_true', help='Start original audio services with the lab HDA adapter')
+parser.add_argument('--verify-audio', action='store_true', help='Verify actual speaker and captured microphone samples')
 parser.add_argument('--probe-player', action='store_true')
 parser.add_argument('--inspect-buffer', action='store_true')
 parser.add_argument('--debug-services', action='store_true', help='Enable vendor debug logging in the disposable guest')
@@ -61,6 +62,8 @@ if args.audio_devices and not (args.opera and (args.probe_audio or args.audio_se
     parser.error('--audio-devices requires --opera and an audio probe or service run')
 if args.audio_services and not (args.audio_devices and args.probe_vip_service):
     parser.error('--audio-services requires audio devices and the VIP peer')
+if args.verify_audio and not (args.audio_devices and args.probe_audio and args.microphone_tone):
+    parser.error('--verify-audio requires an audio-device probe and a nonzero microphone tone')
 if not 0 <= args.microphone_tone <= 3000 or (args.microphone_tone and not args.audio_devices):
     parser.error('--microphone-tone requires audio devices and must be between 0 and 3000 Hz')
 if args.verify_gpio and not args.opera:
@@ -274,6 +277,21 @@ if args.opera and args.test_page and args.inspect_surface:
     print('Original Opera rendered HTML text and exact CSS color samples through CPU Mesa and the original compositor.')
     raise SystemExit(0)
 if args.opera:
+    if args.verify_audio:
+        from check_audio_samples import verify
+        diagnostic = (home / 'audio-check.log').read_text()
+        for operation in ('HARDWARE_MIXER', 'MIXER', 'PLAYBACK', 'CAPTURE', 'BLUETOOTH'):
+            if f'AUDIO_{operation}_RC=0' not in diagnostic.splitlines():
+                raise SystemExit('Original audio operation failed: ' + operation)
+        if 'overrun!!!' in diagnostic or 'underrun!!!' in diagnostic:
+            raise SystemExit('Audio sample transfer reported an overrun or underrun')
+        verify(home / 'audio0.wav', (1000, 2000))
+        verify(home / 'mic.wav', (args.microphone_tone, args.microphone_tone))
+        verify(home / 'bluetooth.wav', (args.microphone_tone,))
+        if process.returncode or not any('Power down' in line for line in lines):
+            raise SystemExit('Guest did not shut down cleanly')
+        print('Original ALSA playback, microphone and Bluetooth PCM transfers verified; audio-service startup remains separate.')
+        raise SystemExit(0)
     if args.verify_vbs or args.verify_tau:
         events = (home / 'smevents.txt').read_text()
         native = (home / 'syslog.log').read_text(errors='replace')

@@ -97,6 +97,9 @@ software-audio-analyze directory *args:
 software-audio-services-probe:
     just software-opera-test --audio-devices --audio-services --probe-vip-service --seconds 30 --debug-services
 
+software-audio-test:
+    just software-opera-test --audio-devices --microphone-tone 700 --probe-audio --probe-vip-service --verify-audio --seconds 10 --debug-services
+
 software-lvds-probe:
     just software-opera-test --probe-lvds --seconds 20 --debug-services
 

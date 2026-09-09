@@ -110,3 +110,12 @@ affinity and disabling lab board resets. It applies the approved ALSA adapter
 before starting that profile. This service probe is not yet verified; normal
 live boot still uses the existing profile. The checkpoint remains suitable for
 continuing device work, not a claim of complete UI or audio startup.
+
+`just software-audio-test` passed in `/software/test-fld5g_xv` after initializing
+HDA's initially muted Master/Capture controls and increasing the lab Bluetooth
+buffer to 2048 frames with a 512-frame period. The adapter's added buffering is
+256 ms at 8 kHz and 128 ms at 16 kHz; this is a lab latency tradeoff for emulation.
+Original software mixer controls still apply per-source policy. The verifier
+requires original client success, no reported overruns/underruns, clean shutdown,
+and measured 1/2 kHz speaker tones plus 700 Hz microphone/Bluetooth capture.
+This validates PCM transport, not the original audio manager's startup.

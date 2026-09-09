@@ -9,3 +9,9 @@ cat /tmp/mazda-asound-stock.conf > /tmp/mazda-asound.conf.new
 cat /lab-software/audio-adapter.conf >> /tmp/mazda-asound.conf.new
 mv /tmp/mazda-asound.conf.new /tmp/mazda-asound.conf
 ln -sf /tmp/mazda-asound.conf /data/asound.conf
+# HDA powers up muted. Leave its hardware gain neutral; Mazda's original
+# software mixer controls continue applying per-source policy and volume.
+for lab_card in 0 1; do
+    /usr/bin/amixer -c "$lab_card" sset Master 100% unmute
+    /usr/bin/amixer -c "$lab_card" sset Capture 100% cap
+done
