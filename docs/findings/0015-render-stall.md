@@ -111,3 +111,15 @@ that resumes the original disclaimer flow if the system is already Normal.
 The reference firmware remains unchanged. Delaying device success replies or
 injecting an unconditional disclaimer event would conceal the race and is not
 the proposed fix.
+
+The user subsequently approved the intro race fix. Its implementation and
+successful Disclaimer/HomeScreen transition are documented in
+[0016-intro-race-fix.md](0016-intro-race-fix.md).
+
+`just software-websockets-probe` loads the unmodified Websockets.js into a
+standalone diagnostic page in the original Opera runtime. The observed result
+in `/software/test-hnzuiho7` confirms an undefined `_isStack` method and a false
+lookup for a queued transition. However, this old runtime exposes both
+ArrayBuffer `.length` and numeric byte access: the stock sequence extraction
+returns 7 and preserves all 40 JSON characters in the diagnostic. Modern
+ArrayBuffer semantics must not be used to infer another firmware defect.

@@ -2,6 +2,11 @@
 # Source this file after starting the compositor; keep D-Bus addresses in the caller.
 export LAB_LOG_DIR="${LAB_LOG_DIR:-/tmp/software}"
 mkdir -p "$LAB_LOG_DIR" /tmp/var/run/dbus /tmp/var/log /tmp/mnt/data /tmp/mnt/data_persist
+if [ "${LAB_INTRO_RACE_FIX:-0}" = 1 ]; then
+    cp /lab-software/libjciuiasystem-intro-fix.so /jci/mmui/uia/libjciuiasystem.so || return 1
+    cp /lab-software/intro-race-fix.json "$LAB_LOG_DIR/intro-race-fix.json" || return 1
+    echo 'LAB_INTRO_RACE_FIX enabled: original disclaimer event after completed intro in Normal state'
+fi
 mount -t ext4 -o ro,noload "$(/bin/busybox findfs LABEL=MAZDA_MESA)" /lab-software/runtime || return 1
 cp /jci/integration/config-mfg-bak/passwd /config-mfg/passwd
 chown cmu /tmp/mnt/data /tmp/mnt/data_persist

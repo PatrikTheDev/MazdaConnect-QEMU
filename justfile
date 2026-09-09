@@ -112,6 +112,15 @@ software-ui-probe *args:
 software-startup-report run:
     docker compose -f compose.software.yaml run --rm lab python3 scripts/software/startup_report.py "$@"
 
+software-websockets-probe:
+    just software-opera-test --renderer llvmpipe --probe-websockets --inspect-surface --seconds 20
+
+software-intro-fix-test:
+    docker compose -f compose.software.yaml run --rm lab python3 scripts/software/check_intro_fix.py
+
+software-intro-fix-probe *args:
+    just software-ui-probe --renderer llvmpipe --intro-race-fix "$@"
+
 software-audio-test:
     just software-opera-test --audio-devices --microphone-tone 700 --probe-audio --probe-vip-service --verify-audio --seconds 10 --debug-services
 

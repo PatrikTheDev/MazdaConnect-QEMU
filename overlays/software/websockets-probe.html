@@ -1,0 +1,40 @@
+<!doctype html>
+<meta charset="utf-8">
+<title>Stock websocket runtime diagnostic</title>
+<style>body {background:#16324f;color:white;font:20px monospace} pre {white-space:pre-wrap}</style>
+<h2>Stock websocket runtime diagnostic</h2>
+<pre id="output"></pre>
+<script>
+// No connections, firmware edits, or replacement readiness events.
+var log = {addSrcFile:function(){}, debug:function(){}, info:function(){},
+           warn:function(){}, error:function(){}};
+</script>
+<script src="file:///jci/gui/framework/js/Websockets.js"></script>
+<script>
+(function () {
+    function report(name, value) {
+        var line = 'WEBSOCKETS_PROBE ' + name + '=' + String(value);
+        document.getElementById('output').appendChild(document.createTextNode(line + '\n'));
+        if (window.opera && opera.postError) opera.postError(line);
+    }
+    try {
+        var ws = Object.create(Websockets.prototype);
+        var json = JSON.stringify({msgType:'transition', enabled:false});
+        ws._waitMsgArray = [[json, 7]];
+        report('method_type', typeof ws._isStack);
+        report('queued_transition_found', _isStack.call(ws, 'transition', 7));
+        var text = json + String.fromCharCode(7);
+        var bytes = new Uint8Array([].map.call(text, function(c) {return c.charCodeAt(0);}));
+        var buffer = bytes.buffer;
+        report('buffer_length', buffer.length);
+        report('buffer_byteLength', buffer.byteLength);
+        var length = buffer.length - 1;
+        report('stock_sequence', buffer[length]);
+        report('stock_json_length', text.substring(0, length).length);
+        report('expected_json_length', json.length);
+        report('done', true);
+    } catch (error) {
+        report('exception', error);
+    }
+}());
+</script>

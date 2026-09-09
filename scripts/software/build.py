@@ -39,6 +39,9 @@ files = [('lab-software/libwlxs-software.so', plugin.read_bytes(), 0o755),
          ('lab-software/compositor.conf', b'plugin = ivi, software\n', 0o644)]
 directories = ['lab-software']
 if args.opera:
+    from build_intro_fix import build as build_intro_fix
+    files.append(('lab-software/libjciuiasystem-intro-fix.so', build_intro_fix(home), 0o755))
+    files.append(('lab-software/intro-race-fix.json', (home / 'intro-race-fix.json').read_bytes(), 0o644))
     sampler = home / 'sample-process'
     subprocess.run(['arm-linux-gnueabi-gcc', '-static', '-O2', '-Wall', '-Wextra', '-Werror',
                     'src/tools/sample-process.c', '-o', str(sampler)], check=True)
@@ -150,6 +153,7 @@ if args.opera:
     files.append(('lab-software/run-opera', Path('overlays/software/run-opera').read_bytes(), 0o755))
     files.append(('lab-software/start-services', Path('overlays/software/start-services').read_bytes(), 0o755))
     files.append(('lab-software/render-test.html', Path('overlays/software/render-test.html').read_bytes(), 0o644))
+    files.append(('lab-software/websockets-probe.html', Path('overlays/software/websockets-probe.html').read_bytes(), 0o644))
 with target.open('ab') as raw, gzip.GzipFile(fileobj=raw, mode='wb', mtime=0) as out:
     for inode, name in enumerate(directories, 1):
         write_entry(out, name, stat.S_IFDIR | 0o755, 0, 0, 0, 0, io.BytesIO(), inode)

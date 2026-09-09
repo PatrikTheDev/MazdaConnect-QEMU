@@ -19,6 +19,7 @@ from audio_backend import AudioBackend
 
 parser = argparse.ArgumentParser(description=__doc__)
 parser.add_argument('--opera', action='store_true')
+parser.add_argument('--intro-race-fix', action='store_true', help='Opt in to the documented MMUI intro completion race patch')
 parser.add_argument('--renderer', choices=('softpipe', 'llvmpipe'), default='softpipe')
 parser.add_argument('--browser-delay', type=int, default=5, help='Seconds between service launch and Opera launch for startup-order diagnostics')
 parser.add_argument('--live-output', action='store_true', help='Exercise the real VNC framebuffer in the bounded diagnostic')
@@ -26,6 +27,7 @@ parser.add_argument('--trace-render', action='store_true', help='Trace Opera wai
 parser.add_argument('--sample-render', action='store_true', help='Sample Opera main-thread registers during startup')
 parser.add_argument('--inspect-surface', action='store_true', help='After the normal capture, explicitly show the browser surface for a separate diagnostic capture')
 parser.add_argument('--test-page', action='store_true')
+parser.add_argument('--probe-websockets', action='store_true', help='Run an isolated diagnostic against the stock websocket JavaScript in original Opera')
 parser.add_argument('--no-hw-accel', action='store_true', help='Use Opera CPU painting instead of its GLES painter; both use CPU Mesa')
 parser.add_argument('--tau-state', choices=('standby', 'connected', 'disconnected'), default='connected')
 parser.add_argument('--verify-tau', action='store_true')
@@ -49,6 +51,10 @@ parser.add_argument('--verify-gpio', action='store_true', help='Check GPIO edge 
 parser.add_argument('--probe-lvds', action='store_true', help='Trace the stock display service with a real VirtIO framebuffer')
 parser.add_argument('--seconds', type=int, default=45)
 args = parser.parse_args()
+if args.intro_race_fix and (not args.opera or args.test_page or args.probe_websockets):
+    parser.error('--intro-race-fix requires the original GUI')
+if args.probe_websockets and (not args.opera or args.test_page):
+    parser.error('--probe-websockets requires --opera and cannot use --test-page')
 if not 0 <= args.browser_delay <= 30:
     parser.error('--browser-delay must be between 0 and 30')
 if not 5 <= args.seconds <= 180:
@@ -59,7 +65,7 @@ if args.trace_render and args.sample_render:
     parser.error('Syscall tracing and register sampling cannot attach to the same process')
 if (args.verify_vbs or args.verify_tau) and not (args.probe_vip_service and args.debug_services):
     parser.error('--verify-vbs requires --probe-vip-service --debug-services')
-if args.verify_video and (not args.opera or args.test_page or not args.capture_sequence or not args.debug_services):
+if args.verify_video and (not args.opera or args.test_page or args.probe_websockets or not args.capture_sequence or not args.debug_services):
     parser.error('--verify-video requires --opera --capture-sequence --debug-services and the original GUI')
 if args.verify_display and not (args.opera and args.test_page and args.inspect_surface):
     parser.error('--verify-display requires --opera --test-page --inspect-surface')
@@ -170,6 +176,8 @@ kill $lab_opera_pid
         commands = commands.replace('cp /tmp/software/frame.ppm /tmp/software/visible.ppm', '/lab-software/runtime/ld-linux.so.3 --library-path /lab-software/runtime /lab-software/display-check\ncp /tmp/software/frame.ppm /tmp/software/visible.ppm')
     if args.test_page:
         commands = commands.replace('-u /jci/gui/index.html', '-u /lab-software/render-test.html')
+    if args.probe_websockets:
+        commands = commands.replace('-u /jci/gui/index.html', '-u /lab-software/websockets-probe.html')
     if args.no_hw_accel:
         commands = commands.replace('/lab-software/run-opera -u', '/lab-software/run-opera --noHWAccel -u')
     if args.trace_render:
@@ -192,6 +200,8 @@ export COMMON_LOG_LEVEL=Debug
         commands = commands.replace('. /lab-software/start-services', f'export LAB_VIP_SERVICE=1 LAB_TAU_STATE={args.tau_state}\n. /lab-software/start-services')
     if args.audio_services:
         commands = commands.replace('. /lab-software/start-services', 'export LAB_AUDIO_SERVICES=1\n. /lab-software/start-services')
+    if args.intro_race_fix:
+        commands = commands.replace('. /lab-software/start-services', 'export LAB_INTRO_RACE_FIX=1\n. /lab-software/start-services')
     if args.probe_vim:
         commands = commands.replace('echo /tmp/software/opera.core', '/lab-software/vip-trace > /tmp/software/vip-trace.log 2>&1 &\n/bin/busybox timeout -t 8 /lab-modules/trace-driver /jci/vim/vim_app > /tmp/software/vim.log 2>&1\necho VIM_PROBE_RC=$?\necho /tmp/software/opera.core')
     if args.probe_audio:
@@ -239,7 +249,7 @@ finally:
 # QEMU has exited, so replay only this disposable output disk's journal before
 # inspecting it. Do not attempt general filesystem repairs on a failed run.
 subprocess.run(['e2fsck', '-p', '-E', 'journal_only', str(disk)], check=True)
-for name in ('pattern.ppm', 'visible.ppm', 'buffer.ppm', 'compositor.log', 'compositor.core', 'opera.log', 'opera-strace.log', 'opera-samples.log', 'opera.core', 'syslog.log', 'syslog.log.0', 'nativegui.log', 'sm.log', 'smevents.txt', 'player.log', 'lvds.log', 'display.log', 'audio.log', 'audio-check.log', 'mic.wav', 'bluetooth.wav', 'vim.log', 'vip-trace.log', 'vip-service.log'):
+for name in ('intro-race-fix.json', 'pattern.ppm', 'visible.ppm', 'buffer.ppm', 'compositor.log', 'compositor.core', 'opera.log', 'opera-strace.log', 'opera-samples.log', 'opera.core', 'syslog.log', 'syslog.log.0', 'nativegui.log', 'sm.log', 'smevents.txt', 'player.log', 'lvds.log', 'display.log', 'audio.log', 'audio-check.log', 'mic.wav', 'bluetooth.wav', 'vim.log', 'vip-trace.log', 'vip-service.log'):
     subprocess.run(['debugfs', '-R', f'dump /{name} {home / name}', str(disk)],
                    stdout=subprocess.PIPE, stderr=subprocess.STDOUT, check=True)
 if args.capture_sequence:

@@ -18,12 +18,16 @@ def main():
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument('--seconds', type=int, help='Stop after this many seconds; useful for reproducible diagnostics')
     parser.add_argument('--test-page', action='store_true', help='Show the controlled browser color/text page')
+    parser.add_argument('--renderer', choices=('softpipe', 'llvmpipe'), default='softpipe')
+    parser.add_argument('--intro-race-fix', action='store_true', help='Apply the documented opt-in MMUI intro race patch')
     parser.add_argument('--start-delay', type=int, default=5, help='Time to connect a VNC client before starting services')
     parser.add_argument('--temperature', type=int, default=25000, help='Initial simulated temperature in millidegrees Celsius')
     parser.add_argument('--trip-temperature', type=int, default=95000, help='Lab thermal trip in millidegrees Celsius; fixed until reboot')
     parser.add_argument('--microphone-tone', type=int, default=0, help='Simulated microphone frequency, 0 for silence')
     parser.add_argument('--record-audio', action='store_true', help='Record speaker PCM alongside live diagnostics')
     args = parser.parse_args()
+    if args.intro_race_fix and args.test_page:
+        parser.error('--intro-race-fix requires the original GUI')
     if not all(-40000 <= value <= 150000 for value in (args.temperature, args.trip_temperature)):
         parser.error('Temperature values must be between -40000 and 150000 millidegrees Celsius')
     if args.start_delay < 0 or (args.seconds is not None and args.seconds < 10):
@@ -68,6 +72,8 @@ def main():
     startup = f'''mkdir -p /tmp/software /tmp/lab-wayland
 mount -t ext4 $(/bin/busybox findfs LABEL=MAZDA_SOFTWARE) /tmp/software
 export LAB_LOG_DIR=/tmp/software
+export LAB_GALLIUM_DRIVER={args.renderer}
+export LAB_INTRO_RACE_FIX={int(args.intro_race_fix)}
 chmod 700 /tmp/lab-wayland
 export XDG_RUNTIME_DIR=/tmp/lab-wayland
 export LD_LIBRARY_PATH=/lab-software:/jci/lib:/usr/lib:/lib
@@ -130,7 +136,7 @@ echo SOFTWARE_LIVE_STARTED
         if audio:
             audio.close()
         subprocess.run(['e2fsck', '-p', '-E', 'journal_only', str(disk)], check=True)
-        for name in ('compositor.log', 'opera.log', 'sm.log', 'syslog.log', 'smevents.txt', 'nativegui.log', 'frame.ppm', 'vip-service.log', 'vim.log', 'audio-config.log', 'display.log'):
+        for name in ('intro-race-fix.json', 'compositor.log', 'opera.log', 'sm.log', 'syslog.log', 'smevents.txt', 'nativegui.log', 'frame.ppm', 'vip-service.log', 'vim.log', 'audio-config.log', 'display.log'):
             subprocess.run(['debugfs', '-R', f'dump /{name} {home / name}', str(disk)],
                            stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL, check=True)
             if (home / name).exists() and name.endswith('.log'):
