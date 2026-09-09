@@ -137,3 +137,8 @@ is enabled with `--websockets-queue-fix`. Test it in the original browser with
 `just software-websockets-fix-test`. For original UI controls, use
 `just software-key backspace` for Back and `just software-key m` / `n` for
 clockwise / counterclockwise rotary input; Escape is not the UI Back control.
+
+Use `just software-health-report /software/<retained-run>` to inspect observed
+service states and frequent errors. The software launcher supplies the POSIX
+shared-memory mount required by the original vehicle database; see
+[validation and remaining issues](docs/findings/0019-posix-shared-memory.md).

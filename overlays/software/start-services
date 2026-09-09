@@ -18,6 +18,9 @@ if [ "${LAB_WEBSOCKETS_QUEUE_FIX:-0}" = 1 ]; then
     cp /lab-software/websockets-queue-fix.json "$LAB_LOG_DIR/websockets-queue-fix.json" || return 1
     echo 'LAB_WEBSOCKETS_QUEUE_FIX enabled: documented original GUI queue correction'
 fi
+# Stock glibc sem_open needs a shared-memory filesystem, absent from lab PID 1.
+mkdir -p /dev/shm || return 1
+mount -t tmpfs -o mode=1777,nosuid,nodev tmpfs /dev/shm || return 1
 mount -t ext4 -o ro,noload "$(/bin/busybox findfs LABEL=MAZDA_MESA)" /lab-software/runtime || return 1
 cp /jci/integration/config-mfg-bak/passwd /config-mfg/passwd
 chown cmu /tmp/mnt/data /tmp/mnt/data_persist

@@ -110,6 +110,10 @@ software-render-sample:
 software-ui-probe *args:
     just software-opera-test --audio-devices --audio-services --probe-vip-service --live-output --seconds 90 --debug-services --capture-sequence "$@"
 
+# Audit retained service states and error counts without rebuilding the guest.
+software-health-report run *args:
+    docker compose -f compose.software.yaml run --rm lab python3 scripts/software/health_report.py "$@"
+
 software-startup-report run:
     docker compose -f compose.software.yaml run --rm lab python3 scripts/software/startup_report.py "$@"
 
