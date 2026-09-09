@@ -42,6 +42,9 @@ software-status:
 software-capture:
     docker compose -f compose.software.yaml run --rm lab python3 scripts/software/control.py capture
 
+software-key key:
+    docker compose -f compose.software.yaml run --rm lab python3 scripts/software/control.py key "$1"
+
 software-prepare:
     docker compose -f compose.software.yaml run --rm lab python3 scripts/software/prepare.py
 

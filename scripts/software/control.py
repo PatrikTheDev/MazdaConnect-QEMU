@@ -9,8 +9,11 @@ import zlib
 
 def main():
     parser = argparse.ArgumentParser(description=__doc__)
-    parser.add_argument('action', choices=('status', 'capture'))
+    parser.add_argument('action', choices=('status', 'capture', 'key'))
+    parser.add_argument('key', nargs='?', choices=('left', 'right', 'up', 'down', 'ret', 'esc'))
     args = parser.parse_args()
+    if (args.action == 'key') != (args.key is not None):
+        parser.error('The key action requires a supported key name')
     try:
         state = json.loads(Path('/software/live.json').read_text())
     except FileNotFoundError:
@@ -38,6 +41,9 @@ def main():
         call('qmp_capabilities')
         if args.action == 'status':
             print(json.dumps({'guest': call('query-status'), 'vnc': call('query-vnc'), 'diagnostics': state['directory']}, indent=2))
+        elif args.action == 'key':
+            call('send-key', {'keys': [{'type': 'qcode', 'data': args.key}], 'hold-time': 100})
+            print('Sent ' + args.key)
         else:
             path = Path('/workspace/artifacts/software-live.ppm')
             call('screendump', {'filename': str(path)})

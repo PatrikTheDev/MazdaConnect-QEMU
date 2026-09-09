@@ -119,3 +119,24 @@ Original software mixer controls still apply per-source policy. The verifier
 requires original client success, no reported overruns/underruns, clean shutdown,
 and measured 1/2 kHz speaker tones plus 700 Hz microphone/Bluetooth capture.
 This validates PCM transport, not the original audio manager's startup.
+
+The original audio-service probe subsequently passed its startup milestones in
+`/software/test-urh8h9yg`: all seven audio services reached STARTED, followed by
+the original system's `system_smm_StateEnter ... SYSTEM_NormalState` message.
+The captured compositor frame showed the original five-icon home screen.
+
+Live boot now enables the same VIP/audio path, with optional `--record-audio`
+and `--microphone-tone`. Speaker recordings are off by default for long-running
+viewers. `just software-key right` (also left/up/down/ret/esc) sends real emulated
+keyboard events through QMP. Live output disks now receive journal replay before
+log extraction, matching the diagnostic harness.
+
+The first extended live run `/software/live-j6dymcm1` displayed the intro over
+VNC but then went black. The display service did not request blanking. Original
+Opera logged `OnHeartbeatMissed` at `opengles_main.cpp:1356`, reporting a frozen
+main loop and terminating itself; its Wayland surface was then unregistered.
+The browser's last trace contained a surface commit without a subsequent frame
+callback. This does not yet prove a compositor defect: browser/render-thread
+state must be inspected. No watchdog bypass has been applied. Long-running UI
+stability and keyboard interaction remain unverified despite the home-screen
+render and successful original system/audio startup.

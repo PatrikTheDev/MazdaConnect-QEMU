@@ -10,9 +10,10 @@ import wave
 
 
 class AudioBackend:
-    def __init__(self, home, tone=0):
+    def __init__(self, home, tone=0, record=True):
         self.home = Path(home)
         self.tone = tone
+        self.record = record
         self.processes = []
         self.files = []
         self.stop = threading.Event()
@@ -43,7 +44,7 @@ class AudioBackend:
                 time.sleep(0.05)
             self.thread = threading.Thread(target=self.feed, args=(runtime / 'microphone.pcm',), daemon=True)
             self.thread.start()
-            for index in range(2):
+            for index in range(2) if self.record else ():
                 output = (self.home / f'audio{index}.raw').open('wb')
                 self.files.append(output)
                 recorder = subprocess.Popen(['parec', '--raw', '--format=s16le', '--rate=48000',
@@ -96,4 +97,6 @@ class AudioBackend:
             if raw.exists():
                 with wave.open(str(self.home / f'audio{index}.wav'), 'wb') as output:
                     output.setparams((2, 2, 48000, 0, 'NONE', 'not compressed'))
-                    output.writeframes(raw.read_bytes())
+                    with raw.open('rb') as source:
+                        while chunk := source.read(65536):
+                            output.writeframes(chunk)

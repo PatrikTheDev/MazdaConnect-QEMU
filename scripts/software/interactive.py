@@ -11,6 +11,7 @@ import time
 
 from qemu_profile import software_command
 from vnc_auth import VNC_PASSWORD
+from audio_backend import AudioBackend
 
 
 def main():
@@ -20,11 +21,15 @@ def main():
     parser.add_argument('--start-delay', type=int, default=5, help='Time to connect a VNC client before starting services')
     parser.add_argument('--temperature', type=int, default=25000, help='Initial simulated temperature in millidegrees Celsius')
     parser.add_argument('--trip-temperature', type=int, default=95000, help='Lab thermal trip in millidegrees Celsius; fixed until reboot')
+    parser.add_argument('--microphone-tone', type=int, default=0, help='Simulated microphone frequency, 0 for silence')
+    parser.add_argument('--record-audio', action='store_true', help='Record speaker PCM alongside live diagnostics')
     args = parser.parse_args()
     if not all(-40000 <= value <= 150000 for value in (args.temperature, args.trip_temperature)):
         parser.error('Temperature values must be between -40000 and 150000 millidegrees Celsius')
     if args.start_delay < 0 or (args.seconds is not None and args.seconds < 10):
         parser.error('Use a nonnegative start delay and at least 10 seconds when bounded')
+    if not 0 <= args.microphone_tone <= 3000:
+        parser.error('Microphone frequency must be between 0 and 3000 Hz')
     home = Path(tempfile.mkdtemp(prefix='live-', dir='/software'))
     disk = home / 'output.ext4'
     with disk.open('wb') as stream:
@@ -34,11 +39,17 @@ def main():
     if not profile.get('software_opera'):
         raise SystemExit('The current guest lacks the Opera overlay. Run just software-boot to build it.')
     profile['disks'].append({'path': str(disk), 'read_only': False})
-    cmd = software_command(profile, live=True)
+    cmd = software_command(profile, live=True, audio_dir=home if not args.test_page else None)
     cmd += ['-qmp', 'unix:' + str(home / 'qmp.sock') + ',server=on,wait=off']
     Path('/software/live.json').write_text(json.dumps({'directory': str(home), 'qmp': str(home / 'qmp.sock')}))
-    process = subprocess.Popen(cmd, stdin=subprocess.PIPE, stdout=subprocess.PIPE,
-                               stderr=subprocess.STDOUT, text=True, bufsize=1)
+    audio = AudioBackend(home, args.microphone_tone, args.record_audio).start() if not args.test_page else None
+    try:
+        process = subprocess.Popen(cmd, stdin=subprocess.PIPE, stdout=subprocess.PIPE,
+                                   stderr=subprocess.STDOUT, text=True, bufsize=1)
+    except BaseException:
+        if audio:
+            audio.close()
+        raise
     pending = queue.Queue()
     def reader():
         for line in process.stdout:
@@ -77,6 +88,9 @@ echo SOFTWARE_LIVE_STARTED
 '''
     if args.test_page:
         startup += 'sleep 15\n/bin/busybox timeout -t 5 /usr/bin/ivi-shell -a JCI_OPERA_PRIMARY:255\n'
+    else:
+        startup = startup.replace('sleep ' + str(args.start_delay) + '\n', '/lab-software/load-audio\nsleep ' + str(args.start_delay) + '\n', 1)
+        startup = startup.replace('. /lab-software/start-services', 'export LAB_VIP_SERVICE=1 LAB_TAU_STATE=connected LAB_AUDIO_SERVICES=1\n. /lab-software/start-services')
     started = time.monotonic()
     sent = False
     shutdown_at = None
@@ -113,7 +127,10 @@ echo SOFTWARE_LIVE_STARTED
         except subprocess.TimeoutExpired:
             process.kill()
             process.wait()
-        for name in ('compositor.log', 'opera.log', 'sm.log', 'syslog.log', 'smevents.txt', 'nativegui.log', 'frame.ppm'):
+        if audio:
+            audio.close()
+        subprocess.run(['e2fsck', '-p', '-E', 'journal_only', str(disk)], check=True)
+        for name in ('compositor.log', 'opera.log', 'sm.log', 'syslog.log', 'smevents.txt', 'nativegui.log', 'frame.ppm', 'vip-service.log', 'vim.log', 'audio-config.log', 'display.log'):
             subprocess.run(['debugfs', '-R', f'dump /{name} {home / name}', str(disk)],
                            stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL, check=True)
             if (home / name).exists() and name.endswith('.log'):
