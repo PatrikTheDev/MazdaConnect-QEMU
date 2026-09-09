@@ -1,0 +1,7 @@
+{
+  "region": null,
+  "exact_os_version": null,
+  "exact_recovery_version": null,
+  "hardware_identifier": null,
+  "note": "Optional private inventory. Copy to vehicle.local.json and keep device-specific details out of Git."
+}

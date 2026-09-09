@@ -1,0 +1,8 @@
+#!/bin/sh
+set -eu
+export LD_LIBRARY_PATH=/jci/lib:/usr/lib:/lib
+export XDG_RUNTIME_DIR=/tmp/lab-wayland
+export WL_COMPOSITOR_CONFIG=/lab-modules/compositor-headless.conf
+/bin/busybox mkdir -p "$XDG_RUNTIME_DIR"
+/bin/busybox chmod 700 "$XDG_RUNTIME_DIR"
+exec /usr/bin/wayland-viv-compositor -l 7

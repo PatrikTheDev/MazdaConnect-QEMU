@@ -1,0 +1,9 @@
+{
+  "version": "6.1.0-50-armmp",
+  "package_version": "6.1.176-1",
+  "url": "https://snapshot.debian.org/archive/debian/20260908T000000Z/pool/main/l/linux/linux-image-6.1.0-50-armmp_6.1.176-1_armhf.deb",
+  "sha256": "ddd1d8dd0c6beabb9eb96bcfab26549eb30c63331bae31de481ffae4af0e982a",
+  "size": 43302144,
+  "provenance": "Filename, version and SHA-256 resolved from signed Debian bookworm snapshot metadata using apt-get update and apt-cache show on 2026-09-09.",
+  "purpose": "Generic ARMv7 lab kernel for QEMU virt. The armhf package contains a kernel, not replacement userspace libraries. Mazda glibc remains unchanged."
+}

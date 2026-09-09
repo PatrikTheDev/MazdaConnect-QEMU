@@ -1,0 +1,23 @@
+#!/bin/sh
+# Lab-only PID 1. Original Mazda init programs remain present and unmodified.
+export PATH=/bin:/sbin:/usr/bin:/usr/sbin
+/bin/busybox mount -t proc proc /proc || exit 1
+/bin/busybox mount -t sysfs sysfs /sys || exit 1
+/bin/busybox mount -t devtmpfs devtmpfs /dev || exit 1
+/bin/sh /lab-modules/load.sh || exit 1
+/bin/busybox mkdir -p /tmp/mnt/resources || exit 1
+resource_device=$(/bin/busybox findfs LABEL=MAZDA_RESOURCES) || exit 1
+/bin/busybox mount -t ext4 -o ro,noload "$resource_device" /mnt/resources || exit 1
+echo MAZDA_RESOURCES_MOUNTED
+echo 'Mazda rootfs lab: original userspace, generic kernel, vehicle services stopped.'
+/bin/busybox uname -r
+case " $(/bin/busybox cat /proc/cmdline) " in
+    *" lab.compositor=headless "*)
+        /lab-modules/run-compositor > /tmp/lab-compositor.log 2>&1 &
+        ;;
+esac
+echo MAZDA_LAB_READY
+# Keep PID 1 alive if the interactive shell exits.
+while :; do
+    /bin/busybox setsid /bin/busybox cttyhack /bin/busybox sh -i
+done

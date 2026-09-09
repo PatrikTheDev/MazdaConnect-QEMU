@@ -1,0 +1,13 @@
+{
+  "id": "cmu150-eu-74.00.324A",
+  "region": "EU",
+  "version": "74.00.324A",
+  "url": null,
+  "yandex_public_key": "https://disk.yandex.ru/d/QIjY9lRX3NugBA",
+  "yandex_path": "/cmu150_EU_74.00.324A_update.up",
+  "sha256": "3a506745c4ae65c21e0427714f377a4765b92e339cdbd6bf1b91ec398bb1a963",
+  "size": 2432208800,
+  "provenance": "Public Yandex mirror linked in a MazdaKlan checksum report on 2024-06-01; SHA-256 matches the posted hash and share metadata. This is community corroboration, not Mazda signature validation. Reference research package.",
+  "checksum_source": "https://www.mazdaklan.cz/threads/aktualizace-systemu-mzd-connect-s-dotykovym-displejem-2014-2018.54/page-23",
+  "retrieved_date": "2026-09-09"
+}

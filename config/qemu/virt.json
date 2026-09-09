@@ -1,0 +1,9 @@
+{
+  "machine": "virt-7.2,highmem=off",
+  "cpu": "cortex-a15",
+  "memory_mb": 1024,
+  "kernel": "/lab/guest/zImage",
+  "initrd": "/lab/guest/initramfs.cpio.gz",
+  "append": "console=ttyAMA0 rdinit=/bin/sh",
+  "graphics": false
+}

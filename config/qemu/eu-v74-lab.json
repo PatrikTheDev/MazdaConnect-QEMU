@@ -1,0 +1,10 @@
+{
+  "machine": "virt-7.2,highmem=off",
+  "cpu": "cortex-a15",
+  "memory_mb": 1536,
+  "kernel": "/lab/kernels/6.1.0-50-armmp/package/boot/vmlinuz-6.1.0-50-armmp",
+  "initrd": "/lab/guests/cmu150-eu-74.00.324A/initramfs.cpio.gz",
+  "append": "console=ttyAMA0 rdinit=/lab-init panic=-1",
+  "graphics": false,
+  "disks": [{"path": "/lab/guests/cmu150-eu-74.00.324A/resources.ext4", "read_only": true}]
+}
