@@ -1,0 +1,17 @@
+#!/bin/sh
+# Source this file after starting the compositor; keep D-Bus addresses in the caller.
+export LAB_LOG_DIR="${LAB_LOG_DIR:-/tmp/software}"
+mkdir -p "$LAB_LOG_DIR" /tmp/var/run/dbus /tmp/var/log /tmp/mnt/data /tmp/mnt/data_persist
+mount -t ext4 -o ro,noload "$(/bin/busybox findfs LABEL=MAZDA_MESA)" /lab-software/runtime || return 1
+cp /jci/integration/config-mfg-bak/passwd /config-mfg/passwd
+chown cmu /tmp/mnt/data /tmp/mnt/data_persist
+/bin/busybox ifconfig lo up
+/bin/busybox syslogd -s 0 -O "$LAB_LOG_DIR/syslog.log"
+/usr/bin/dbus start
+# shellcheck disable=SC1091
+. /tmp/dbus.env
+ln -s event2 /dev/input/keyboard0
+[ -e /dev/input/mouse0 ] || ln -s event1 /dev/input/mouse0
+ln -s event1 /dev/input/touchscreen
+/jci/nativegui/svcjcinativeguictrl > "$LAB_LOG_DIR/nativegui.log" 2>&1 &
+/jci/sm/sm -f /lab-software/sm.conf -e "$LAB_LOG_DIR/smevents.txt" > "$LAB_LOG_DIR/sm.log" 2>&1 &

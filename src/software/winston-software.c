@@ -3,9 +3,49 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+#include <fcntl.h>
+#include <linux/fb.h>
+#include <linux/kd.h>
+#include <sys/ioctl.h>
+#include <sys/mman.h>
+#include <unistd.h>
 
 enum { WIDTH = 800, HEIGHT = 480 };
 static void save_pixels(const char *, const uint32_t *);
+static void display_pixels(const uint32_t *pixels) {
+    static void *memory;
+    static unsigned stride;
+    const char *path=getenv("MAZDA_SOFTWARE_FB");
+    if (!path) return;
+    if (!memory) {
+        int console=open("/dev/tty0",O_RDWR);
+        if (console<0 || ioctl(console,KDSETMODE,KD_GRAPHICS)) {
+            perror("software console graphics mode"); abort();
+        }
+        close(console);
+        struct fb_fix_screeninfo fixed;
+        struct fb_var_screeninfo variable;
+        int fd=open(path,O_RDWR);
+        if (fd<0 || ioctl(fd,FBIOGET_FSCREENINFO,&fixed) || ioctl(fd,FBIOGET_VSCREENINFO,&variable)) {
+            perror("software framebuffer"); abort();
+        }
+        if (variable.xres!=WIDTH || variable.yres!=HEIGHT || variable.bits_per_pixel!=32 ||
+            variable.red.offset!=16 || variable.green.offset!=8 || variable.blue.offset!=0 ||
+            variable.red.length!=8 || variable.green.length!=8 || variable.blue.length!=8 ||
+            variable.xoffset || variable.yoffset || fixed.line_length<WIDTH*4 ||
+            fixed.smem_len<fixed.line_length*HEIGHT) {
+            fprintf(stderr,"SOFTWARE unsupported framebuffer %ux%u bpp=%u stride=%u\n",
+                    variable.xres,variable.yres,variable.bits_per_pixel,fixed.line_length); abort();
+        }
+        stride=fixed.line_length;
+        memory=mmap(NULL,fixed.smem_len,PROT_READ|PROT_WRITE,MAP_SHARED,fd,0);
+        close(fd);
+        if (memory==MAP_FAILED) {perror("software framebuffer mmap");abort();}
+        fprintf(stderr,"SOFTWARE_LIVE_FB %s %ux%u\n",path,variable.xres,variable.yres);
+    }
+    for (int y=0;y<HEIGHT;++y)
+        memcpy((char *)memory+y*stride,pixels+y*WIDTH,WIDTH*4);
+}
 struct pixels {
     struct buffer base;
     int width, height, format, premultiplied;
@@ -144,6 +184,7 @@ static int repaint(void *data) {
     wlxs_compositor_frame_update(sw->output.compositor,&sw->output);
     memset(sw->frame,0,sizeof(sw->frame));
     wlxs_output_repaint(&sw->output,draw);
+    display_pixels(sw->frame);
     const char *path=getenv("MAZDA_SOFTWARE_FRAME");
     save_pixels(path ? path : "/tmp/software-frame.ppm",sw->frame);
     wlxs_output_post_frames(&sw->output);

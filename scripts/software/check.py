@@ -14,6 +14,7 @@ import re
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[1] / 'guest'))
 from boot import command
+from qemu_profile import software_command
 
 parser = argparse.ArgumentParser(description=__doc__)
 parser.add_argument('--opera', action='store_true')
@@ -38,9 +39,7 @@ with disk.open('wb') as stream:
 subprocess.run(['mkfs.ext4', '-q', '-F', '-L', 'MAZDA_SOFTWARE', str(disk)], check=True)
 settings = json.loads(Path('/software/guest/profile.json').read_text())
 settings['disks'].append({'path': str(disk), 'read_only': False})
-cmd = command(settings)
-if args.opera:
-    cmd += ['-global', 'virtio-mmio.force-legacy=false', '-device', 'virtio-keyboard-device', '-device', 'virtio-tablet-device']
+cmd = software_command(settings) if args.opera else command(settings)
 process = subprocess.Popen(cmd, stdin=subprocess.PIPE, stdout=subprocess.PIPE,
                            stderr=subprocess.STDOUT, text=True, bufsize=1)
 pending = queue.Queue()
@@ -81,20 +80,9 @@ if args.opera:
     commands = commands.replace('/usr/bin/wayland-viv-compositor -l 7', '/lab-software/load-input\n/usr/bin/wayland-viv-compositor -l 7')
     start = commands.index('/lab-software/shm-pattern')
     end = commands.index('kill $lab_compositor_pid')
-    commands = commands[:start] + '''mount -t ext4 -o ro,noload $(/bin/busybox findfs LABEL=MAZDA_MESA) /lab-software/runtime
-mkdir -p /tmp/var/run/dbus /tmp/var/log /tmp/mnt/data /tmp/mnt/data_persist
-cp /jci/integration/config-mfg-bak/passwd /config-mfg/passwd
-chown cmu /tmp/mnt/data /tmp/mnt/data_persist
-/bin/busybox ifconfig lo up
-/bin/busybox syslogd -s 0 -O /tmp/software/syslog.log
-/usr/bin/dbus start
-. /tmp/dbus.env
+    commands = commands[:start] + '''export LAB_LOG_DIR=/tmp/software
+. /lab-software/start-services
 DBUS_SYSTEM_BUS_ADDRESS=unix:path=/tmp/dbus_hmi_socket /usr/bin/dbus-send --system --print-reply --type=method_call --dest=org.freedesktop.DBus / org.freedesktop.DBus.ListNames
-ln -s event2 /dev/input/keyboard0
-ln -s event1 /dev/input/mouse0
-ln -s event1 /dev/input/touchscreen
-/jci/nativegui/svcjcinativeguictrl > /tmp/software/nativegui.log 2>&1 &
-/jci/sm/sm -f /lab-software/sm.conf -e /tmp/software/smevents.txt > /tmp/software/sm.log 2>&1 &
 sleep 5
 echo /tmp/software/opera.core > /proc/sys/kernel/core_pattern
 /lab-software/run-opera -u /jci/gui/index.html > /tmp/software/opera.log 2>&1 &
@@ -119,10 +107,10 @@ kill $lab_opera_pid
         commands = commands.replace('/lab-software/run-opera -u', '/lab-software/run-opera --noHWAccel -u')
     commands = commands.replace('sleep 25\n', 'sleep ' + str(args.seconds) + '\n')
     if args.debug_services:
-        commands = commands.replace('/jci/nativegui/svcjcinativeguictrl >', '''mkdir -p /tmp/common/log
+        commands = commands.replace('. /lab-software/start-services', '''mkdir -p /tmp/common/log
 echo COMMON_LOG_LEVEL=Debug > /tmp/common/log/settings.txt
 export COMMON_LOG_LEVEL=Debug
-/jci/nativegui/svcjcinativeguictrl >''')
+. /lab-software/start-services''')
     if args.capture_sequence:
         samples = ''.join(f'sleep 5\ncp /tmp/software/frame.ppm /tmp/software/sequence-{i:02d}.ppm\n' for i in range(args.seconds // 5))
         samples += f'sleep {args.seconds % 5}\n'

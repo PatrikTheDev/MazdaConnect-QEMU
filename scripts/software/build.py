@@ -59,7 +59,7 @@ if args.opera:
         for dep in filter(None, dependencies.split(',')):
             add_module(dep)
         modules[name] = source
-    for name in ('virtio_input', 'evdev'):
+    for name in ('virtio_input', 'evdev', 'virtio_gpu'):
         add_module(name)
     for source in modules.values():
         files.append(('lab-software/' + source.name, source.read_bytes(), 0o644))
@@ -93,6 +93,7 @@ if args.opera:
     settings['disks'].append({'path': str(disk), 'read_only': True})
     files.append(('lab-software/mesa.json', b'{"file_format_version":"1.0.0","ICD":{"library_path":"/lab-software/runtime/libEGL_mesa.so.0"}}', 0o644))
     files.append(('lab-software/run-opera', Path('overlays/software/run-opera').read_bytes(), 0o755))
+    files.append(('lab-software/start-services', Path('overlays/software/start-services').read_bytes(), 0o755))
     files.append(('lab-software/render-test.html', Path('overlays/software/render-test.html').read_bytes(), 0o644))
 with target.open('ab') as raw, gzip.GzipFile(fileobj=raw, mode='wb', mtime=0) as out:
     for inode, name in enumerate(directories, 1):
@@ -101,5 +102,6 @@ with target.open('ab') as raw, gzip.GzipFile(fileobj=raw, mode='wb', mtime=0) as
         write_entry(out, name, stat.S_IFREG | mode, 0, 0, 0, len(data), io.BytesIO(data), inode)
     write_entry(out, 'TRAILER!!!', 0, 0, 0, 0, 0, io.BytesIO(), 0)
 settings['initrd'] = str(target)
+settings['software_opera'] = args.opera
 (home / 'profile.json').write_text(json.dumps(settings, indent=2) + '\n')
 print(target)

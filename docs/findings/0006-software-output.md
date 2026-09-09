@@ -118,8 +118,44 @@ The service exits before STARTED. MMUI remains responsive, including GUI health
 checks, but remains in IntroAnimation. This is an unmet vehicle-platform
 expectation, separate from GPU/VPU emulation and the working software renderer.
 No GPIO files, hardware-success stubs, or normal-mode events have been fabricated.
-The next architecture decision is a behavioral GPIO simulation that preserves
-the original system service versus a replacement lab vehicle-state service.
+The approved next step is a behavioral GPIO simulation that preserves the
+original system service. That module is separate from the viewer milestone.
+
+## Continuous VNC viewer
+
+Run `just software-boot` to build and start the original UI services. In another
+terminal, run `just software-view` to open macOS Screen Sharing at
+`vnc://127.0.0.1:5901`. QEMU starts its VNC server before guest startup; the default
+five-second service delay allows time to connect. Use `--start-delay 20` if needed.
+
+The CPU compositor writes each completed frame to the guest's 800×480 XRGB8888
+VirtIO framebuffer. QEMU's native VNC server streams that scanout continuously.
+The framebuffer is put into graphics mode to prevent the kernel console cursor
+from overwriting UI pixels. This uses the generic VirtIO display, with Mesa still
+forced to softpipe; it does not use the Vivante work. VNC is published only on the
+host's loopback interface, without a password.
+
+Useful recipes:
+
+- `just software-run`: restart the existing build without rebuilding.
+- `just software-stop`: cleanly shut down the foreground guest from another terminal.
+- `just software-status`: inspect the QEMU state and connected VNC clients.
+- `just software-capture`: save the current scanout as `artifacts/software-live.png`.
+- `just software-boot --test-page`: show the controlled browser page.
+- `just software-boot --seconds 65 --start-delay 0`: bounded original-UI startup.
+- `just software-vnc-test`: verify RFB updates, desktop size, exact colors and text.
+
+Ctrl-C also shuts down the guest. Live logs are saved under `runs/software-live*`
+and the diagnostic disk is retained in `/software/live-*`. Service startup is
+shared with automated tests in `overlays/software/start-services`. Builds and
+runs acquire one lock for the software volume, preventing simultaneous mutation
+of a guest's mounted runtime disk. Stop a running software guest before testing
+or rebuilding. The separate Vivante volume/worktree is unaffected.
+
+The VNC integration test passed with 44 updates and exact 800×480 browser pixels.
+VNC availability does not mean that the vehicle-dependent system-mode blocker
+above is solved: the original animation plays, then the GUI still waits for the
+missing power/ignition signals.
 
 ## Commands and artifacts
 
