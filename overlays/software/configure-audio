@@ -1,0 +1,11 @@
+#!/bin/sh
+set -eu
+/bin/sh /jci/am/audioconfigupdate.sh
+# Keep firmware files intact; materialize the selected configuration in tmpfs.
+if [ ! -f /tmp/mazda-asound-stock.conf ]; then
+    cat /data/asound.conf > /tmp/mazda-asound-stock.conf
+fi
+cat /tmp/mazda-asound-stock.conf > /tmp/mazda-asound.conf.new
+cat /lab-software/audio-adapter.conf >> /tmp/mazda-asound.conf.new
+mv /tmp/mazda-asound.conf.new /tmp/mazda-asound.conf
+ln -sf /tmp/mazda-asound.conf /data/asound.conf

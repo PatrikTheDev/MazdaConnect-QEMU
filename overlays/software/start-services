@@ -10,8 +10,31 @@ chown cmu /tmp/mnt/data /tmp/mnt/data_persist
 /usr/bin/dbus start
 # shellcheck disable=SC1091
 . /tmp/dbus.env
+if [ "${LAB_VENDOR_LVDS_PROBE:-0}" != 1 ]; then
+    /lab-software/runtime/ld-linux.so.3 --library-path /lab-software/runtime /lab-software/display-service > "$LAB_LOG_DIR/display.log" 2>&1 &
+fi
 ln -s event2 /dev/input/keyboard0
 [ -e /dev/input/mouse0 ] || ln -s event1 /dev/input/mouse0
 ln -s event1 /dev/input/touchscreen
+if [ "${LAB_VIP_SERVICE:-0}" = 1 ]; then
+    /lab-software/vip-service --tau-state "${LAB_TAU_STATE:-connected}" > "$LAB_LOG_DIR/vip-service.log" 2>&1 &
+    lab_vip_pid=$!
+    /jci/vim/vim_app > "$LAB_LOG_DIR/vim.log" 2>&1 &
+    lab_vim_pid=$!
+    lab_vip_wait=0
+    while ! /bin/busybox grep -q '^VIP_HELLO_ACKED$' "$LAB_LOG_DIR/vip-service.log"; do
+        if ! kill -0 "$lab_vip_pid" || ! kill -0 "$lab_vim_pid" || [ "$lab_vip_wait" -ge 10 ]; then
+            echo 'Original VIM/VIP handshake did not complete before service startup' >&2
+            return 1
+        fi
+        sleep 1
+        lab_vip_wait=$((lab_vip_wait + 1))
+    done
+fi
 /jci/nativegui/svcjcinativeguictrl > "$LAB_LOG_DIR/nativegui.log" 2>&1 &
-/jci/sm/sm -f /lab-software/sm.conf -e "$LAB_LOG_DIR/smevents.txt" > "$LAB_LOG_DIR/sm.log" 2>&1 &
+lab_sm_config=/lab-software/sm.conf
+if [ "${LAB_AUDIO_SERVICES:-0}" = 1 ]; then
+    /lab-software/configure-audio > "$LAB_LOG_DIR/audio-config.log" 2>&1 || return 1
+    lab_sm_config=/lab-software/sm-audio.conf
+fi
+/jci/sm/sm -f "$lab_sm_config" -e "$LAB_LOG_DIR/smevents.txt" > "$LAB_LOG_DIR/sm.log" 2>&1 &

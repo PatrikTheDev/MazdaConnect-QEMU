@@ -1,0 +1,14 @@
+#!/bin/sh
+# Exercise original ALSA clients and configuration; retain each operation's status.
+/usr/bin/amixer -c 0 scontents
+/usr/bin/amixer -c 0 sset Master 100% unmute
+echo AUDIO_HARDWARE_MIXER_RC=$?
+/usr/bin/amixer -c 0 sset informationMuxGenericIn 100%
+echo AUDIO_MIXER_RC=$?
+/usr/bin/amixer -c 0 sget informationMuxGenericIn
+/bin/busybox timeout -t 8 /usr/bin/aplay -D informationGeneric -d 1 /jci/am/48KStereo-1KLeft-2KRight.wav
+echo AUDIO_PLAYBACK_RC=$?
+/bin/busybox timeout -t 8 /usr/bin/arecord -D mic -d 1 -r 48000 -c 2 -f S16_LE /tmp/software/mic.wav
+echo AUDIO_CAPTURE_RC=$?
+/bin/busybox timeout -t 8 /usr/bin/arecord -D bluetoothSco -d 1 -r 8000 -c 1 -f S16_LE /tmp/software/bluetooth.wav
+echo AUDIO_BLUETOOTH_RC=$?

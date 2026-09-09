@@ -39,6 +39,16 @@ files = [('lab-software/libwlxs-software.so', plugin.read_bytes(), 0o755),
          ('lab-software/compositor.conf', b'plugin = ivi, software\n', 0o644)]
 directories = ['lab-software']
 if args.opera:
+    for name in ('display-service', 'display-check'):
+        binary = home / name
+        subprocess.run(['arm-linux-gnueabi-gcc', '-O2', '-Wall', '-Wextra', '-Werror',
+                        '-I/opt/mesa-armel/usr/include/dbus-1.0',
+                        '-I/opt/mesa-armel/usr/lib/arm-linux-gnueabi/dbus-1.0/include',
+                        'src/software/' + name + '.c', '-L/opt/mesa-armel/usr/lib/arm-linux-gnueabi',
+                        '-Wl,-rpath-link,/opt/mesa-armel/lib/arm-linux-gnueabi',
+                        '-Wl,-rpath-link,/opt/mesa-armel/usr/lib/arm-linux-gnueabi',
+                        '-L/opt/mesa-armel/lib/arm-linux-gnueabi', '-l:libdbus-1.so.3', '-o', str(binary)], check=True)
+        files.append(('lab-software/' + name, binary.read_bytes(), 0o755))
     player = home / 'splashplayer-software'
     subprocess.run(['arm-linux-gnueabi-gcc', '-static', '-O2', '-Wall', '-Wextra', '-Werror',
                     '-I/opt/mesa-armel/usr/include', 'src/software/splashplayer.c',
@@ -48,6 +58,27 @@ if args.opera:
     files.append(('lab-software/splashplayer-vendor', Path('/software/sysroot/usr/bin/splashplayer').read_bytes(), 0o755))
     modules = {}
     kernel = json.loads(Path('config/kernel/debian-armmp.json').read_text())
+    from build_gpio import build as build_gpio
+    gpio_module = build_gpio(home, kernel['version'])
+    files.append(('lab-software/mazda_gpio.ko', gpio_module.read_bytes(), 0o644))
+    files.append(('lab-software/mazda_vip.ko', gpio_module.with_name('mazda_vip.ko').read_bytes(), 0o644))
+    gpio_check = home / 'gpio-check'
+    subprocess.run(['arm-linux-gnueabi-gcc', '-static', '-O2', '-Wall', '-Wextra', '-Werror',
+                    'src/software/gpio-check.c', '-o', str(gpio_check)], check=True)
+    files.append(('lab-software/gpio-check', gpio_check.read_bytes(), 0o755))
+    vip_check = home / 'vip-check'
+    subprocess.run(['arm-linux-gnueabi-gcc', '-static', '-O2', '-Wall', '-Wextra', '-Werror',
+                    'src/software/vip-check.c', '-o', str(vip_check)], check=True)
+    files.append(('lab-software/vip-check', vip_check.read_bytes(), 0o755))
+    vip_trace = home / 'vip-trace'
+    subprocess.run(['arm-linux-gnueabi-gcc', '-static', '-O2', '-Wall', '-Wextra', '-Werror',
+                    'src/software/vip-trace.c', '-o', str(vip_trace)], check=True)
+    files.append(('lab-software/vip-trace', vip_trace.read_bytes(), 0o755))
+    vip_service = home / 'vip-service'
+    subprocess.run(['arm-linux-gnueabi-gcc', '-static', '-O2', '-Wall', '-Wextra', '-Werror',
+                    'src/software/vip-service.c', 'src/software/vip-protocol.c', '-o', str(vip_service)], check=True)
+    files.append(('lab-software/vip-service', vip_service.read_bytes(), 0o755))
+    directories += ['lib/modules/' + kernel['version']]
     kernel_root = Path('/lab/kernels') / kernel['version'] / 'package'
     available = {p.name.split('.ko')[0].replace('-', '_'): p for p in kernel_root.rglob('*.ko')}
     def add_module(name):
@@ -59,12 +90,32 @@ if args.opera:
         for dep in filter(None, dependencies.split(',')):
             add_module(dep)
         modules[name] = source
-    for name in ('virtio_input', 'evdev', 'virtio_gpu'):
+    for name in ('virtio_input', 'evdev', 'virtio_gpu', 'uinput'):
         add_module(name)
     for source in modules.values():
         files.append(('lab-software/' + source.name, source.read_bytes(), 0o644))
     script = '#!/bin/sh\nset -eu\n' + ''.join('/bin/busybox insmod /lab-software/' + p.name + '\n' for p in modules.values())
+    script += '/bin/busybox insmod /lab-software/mazda_vip.ko\n'
+    script += '/bin/busybox insmod /lab-software/mazda_gpio.ko "$@"\n'
     files.append(('lab-software/load-input', script.encode(), 0o755))
+    from build_audio import build as build_audio, alsa_adapter, service_config
+    audio_module = build_audio(home, kernel['version'])
+    available['snd_hda_intel'] = audio_module
+    modules.clear()
+    for name in ('snd_hda_codec_generic', 'snd_hda_intel', 'snd_aloop'):
+        add_module(name)
+    audio_script = '#!/bin/sh\nset -eu\n'
+    for name, source in modules.items():
+        files.append(('lab-software/' + source.name, source.read_bytes(), 0o644))
+        options = {'snd_hda_intel': ' index=0,1 id=CMU,Bluetooth',
+                   'snd_aloop': ' index=2,3,4 id=Loopback0,Loopback1,Loopback2 enable=1,1,1'}.get(name, '')
+        audio_script += '/bin/busybox insmod /lab-software/' + source.name + options + '\n'
+    audio_script += 'sleep 2\ncat /proc/asound/cards\ncat /proc/asound/pcm\n'
+    files.append(('lab-software/load-audio', audio_script.encode(), 0o755))
+    files.append(('lab-software/audio-check', Path('overlays/software/audio-check').read_bytes(), 0o755))
+    files.append(('lab-software/configure-audio', Path('overlays/software/configure-audio').read_bytes(), 0o755))
+    files.append(('lab-software/audio-adapter.conf', alsa_adapter(), 0o644))
+    files.append(('lab-software/sm-audio.conf', service_config(), 0o644))
     files = [(name, b'plugin = ivi, software, xkb\ninput = /dev/input/event1, /dev/input/event2\nxkbmap = /usr/share/wayland/evdev-pc105-us.xkm\n' if name.endswith('/compositor.conf') else data, mode) for name, data, mode in files]
     files.append(('lab-software/sm.conf', Path('overlays/software/sm.conf').read_bytes(), 0o644))
     directories += ['lab-software/runtime']

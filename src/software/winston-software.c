@@ -9,6 +9,9 @@
 #include <sys/ioctl.h>
 #include <sys/mman.h>
 #include <unistd.h>
+#include <sys/socket.h>
+#include <sys/un.h>
+#include "display-control.h"
 
 enum { WIDTH = 800, HEIGHT = 480 };
 static void save_pixels(const char *, const uint32_t *);
@@ -56,6 +59,8 @@ struct software {
     struct output output;
     struct wl_event_source *timer;
     int pending;
+    int control_fd, reply_fd, blank, control_idle;
+    struct wl_event_source *control_timer;
     uint32_t frame[WIDTH * HEIGHT];
 };
 static struct software *owner(struct output *out) {
@@ -184,10 +189,39 @@ static int repaint(void *data) {
     wlxs_compositor_frame_update(sw->output.compositor,&sw->output);
     memset(sw->frame,0,sizeof(sw->frame));
     wlxs_output_repaint(&sw->output,draw);
+    if (sw->blank) memset(sw->frame,0,sizeof(sw->frame));
     display_pixels(sw->frame);
     const char *path=getenv("MAZDA_SOFTWARE_FRAME");
     save_pixels(path ? path : "/tmp/software-frame.ppm",sw->frame);
     wlxs_output_post_frames(&sw->output);
+    return 0;
+}
+/* Poll separately from repaint: blank/unblank must work with an idle client. */
+static int control_tick(void *data) {
+    struct software *sw=data;
+    if (sw->reply_fd < 0) {
+        sw->reply_fd=accept(sw->control_fd,NULL,NULL);
+        sw->control_idle=0;
+    }
+    if (sw->reply_fd >= 0) {
+        unsigned char request[3];
+        int n=recv(sw->reply_fd,request,sizeof(request),MSG_DONTWAIT);
+        if (n==2 && request[0]==DISPLAY_SET && request[1]<=1) {
+            sw->blank=request[1];
+            /* Complete synchronously so the reply describes pixels already applied. */
+            repaint(sw);
+            unsigned char reply[2]={DISPLAY_SET,sw->blank};
+            send(sw->reply_fd,reply,sizeof(reply),MSG_NOSIGNAL);
+            close(sw->reply_fd); sw->reply_fd=-1;
+        } else if (n==2 && request[0]==DISPLAY_GET) {
+            unsigned char reply[2]={DISPLAY_GET,sw->blank};
+            send(sw->reply_fd,reply,sizeof(reply),MSG_NOSIGNAL);
+            close(sw->reply_fd); sw->reply_fd=-1;
+        } else if (n>=0 || ++sw->control_idle>100) {
+            close(sw->reply_fd); sw->reply_fd=-1;
+        }
+    }
+    wl_event_source_timer_update(sw->control_timer,20);
     return 0;
 }
 static void bind_output(struct wl_resource *resource) {
@@ -203,6 +237,9 @@ static struct output_ops ops={
 };
 static void destroy_plugin(struct plugin *plugin) {
     struct software *sw=(struct software *)plugin;
+    if (sw->control_timer) wl_event_source_remove(sw->control_timer);
+    if (sw->reply_fd>=0) close(sw->reply_fd);
+    close(sw->control_fd); unlink(DISPLAY_SOCKET);
     if (sw->timer) wl_event_source_remove(sw->timer);
     wlxs_output_fini(&sw->output);
     free(sw);
@@ -214,11 +251,21 @@ struct plugin *wlxs_software_plugin_init(void *compositor,void *config) {
     (void)config;
     struct software *sw=calloc(1,sizeof(*sw));
     if (!sw) return NULL;
+    sw->reply_fd=-1;
+    sw->control_fd=socket(AF_UNIX,SOCK_SEQPACKET|SOCK_NONBLOCK,0);
+    struct sockaddr_un address={.sun_family=AF_UNIX};
+    strcpy(address.sun_path,DISPLAY_SOCKET);
+    if (sw->control_fd<0 || bind(sw->control_fd,(void *)&address,sizeof(address)) || listen(sw->control_fd,4)) {
+        perror("software display control"); abort();
+    }
     sw->plugin.destroy=destroy_plugin;
     sw->output.ops=&ops;
     if (!wlxs_output_init(&sw->output,compositor,bind_output)) {free(sw);return NULL;}
     sw->timer=wl_event_loop_add_timer(wl_display_get_event_loop(sw->output.display),repaint,sw);
     if (!sw->timer) {wlxs_output_fini(&sw->output);free(sw);return NULL;}
+    sw->control_timer=wl_event_loop_add_timer(wl_display_get_event_loop(sw->output.display),control_tick,sw);
+    if (!sw->control_timer) abort();
+    wl_event_source_timer_update(sw->control_timer,20);
     trigger(&sw->output);
     fputs("SOFTWARE_OUTPUT_READY 800x480\n",stderr);
     return &sw->plugin;

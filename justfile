@@ -29,6 +29,10 @@ software-run *args:
 software-view:
     open vnc://127.0.0.1:5901
 
+# Check VNC passwords without rebuilding or touching the running Mazda guest.
+software-vnc-auth-test:
+    docker compose -f compose.software.yaml run --rm lab python3 scripts/software/check_vnc_auth.py
+
 software-stop:
     docker stop --time 25 mazda-software-live
 
@@ -58,6 +62,43 @@ software-video-test:
 
 software-vnc-test:
     docker compose -f compose.software.yaml run --rm lab python3 scripts/software/task.py vnc
+
+# Compile only; does not change files mounted by an active viewer.
+software-gpio-build:
+    docker compose -f compose.software.yaml run --rm lab python3 scripts/software/build_gpio.py
+
+software-gpio-test:
+    just software-opera-test --verify-gpio --seconds 60 --debug-services --capture-sequence
+
+software-display-test:
+    just software-opera-test --test-page --inspect-surface --verify-display --seconds 20
+
+software-thermal-test:
+    just software-opera-test --verify-gpio --verify-thermal --seconds 35 --debug-services
+
+software-vim-probe:
+    just software-opera-test --probe-vim --seconds 10 --debug-services
+
+software-vbs-probe:
+    just software-opera-test --seconds 20 --debug-services
+
+software-audio-probe:
+    just software-opera-test --probe-audio --seconds 10 --debug-services
+
+software-audio-build:
+    docker compose -f compose.software.yaml run --rm lab python3 scripts/software/build_audio.py
+
+software-audio-device-probe:
+    just software-opera-test --audio-devices --microphone-tone 700 --probe-audio --probe-vip-service --seconds 10 --debug-services
+
+software-audio-analyze directory *args:
+    docker compose -f compose.software.yaml run --rm lab python3 scripts/software/check_audio_samples.py "$@"
+
+software-audio-services-probe:
+    just software-opera-test --audio-devices --audio-services --probe-vip-service --seconds 30 --debug-services
+
+software-lvds-probe:
+    just software-opera-test --probe-lvds --seconds 20 --debug-services
 
 software-inspect binary start end *args:
     docker compose -f compose.software.yaml run --rm lab python3 scripts/software/inspect_abi.py "$@"
@@ -133,5 +174,25 @@ vehicle-script:
 
 test:
     docker compose run --rm lab python3 -m unittest discover -s tests -v
-    docker compose run --rm lab shellcheck scripts/doctor.sh scripts/vehicle/inventory.sh scripts/guest/smoke.sh overlays/lab/lab-init overlays/lab/run-compositor overlays/software/run-opera overlays/software/start-services
+    docker compose run --rm lab shellcheck scripts/doctor.sh scripts/vehicle/inventory.sh scripts/guest/smoke.sh overlays/lab/lab-init overlays/lab/run-compositor overlays/software/run-opera overlays/software/start-services overlays/software/audio-check overlays/software/configure-audio
     docker compose run --rm lab bash scripts/guest/smoke.sh
+
+# Verify the simulated SPI transport and VIP interrupt device, including reload.
+software-vip-test:
+    just software-opera-test --verify-vip --seconds 5
+
+# Probe original VIM with the stateful VIP protocol peer.
+software-vip-probe *args:
+    just software-opera-test --probe-vip-service --seconds 20 --debug-services {{args}}
+
+# Check protocol framing and exchange state in the target ARM ABI.
+software-vip-protocol-test:
+    docker compose -f compose.software.yaml run --rm lab python3 scripts/software/check_vip_protocol.py
+
+# Require original VIM handshake plus VBS and system-service startup.
+software-vbs-test:
+    just software-opera-test --probe-vip-service --verify-vbs --seconds 20 --debug-services
+
+# Verify original decoding of connected, standby, or disconnected TAU state.
+software-tau-test state="connected":
+    just software-opera-test --probe-vip-service --verify-tau --tau-state {{state}} --seconds 20 --debug-services

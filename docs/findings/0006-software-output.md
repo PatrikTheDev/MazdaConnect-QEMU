@@ -133,7 +133,9 @@ VirtIO framebuffer. QEMU's native VNC server streams that scanout continuously.
 The framebuffer is put into graphics mode to prevent the kernel console cursor
 from overwriting UI pixels. This uses the generic VirtIO display, with Mesa still
 forced to softpipe; it does not use the Vivante work. VNC is published only on the
-host's loopback interface, without a password.
+host's loopback interface. Enter the development password `mazda` in macOS
+Screen Sharing. Password authentication is enabled for compatibility with that
+client; this public lab credential is not intended for remote exposure.
 
 Useful recipes:
 
@@ -155,7 +157,8 @@ or rebuilding. The separate Vivante volume/worktree is unaffected.
 The VNC integration test passed with 44 updates and exact 800×480 browser pixels.
 VNC availability does not mean that the vehicle-dependent system-mode blocker
 above is solved: the original animation plays, then the GUI still waits for the
-missing power/ignition signals.
+vehicle-state dependencies. GPIO and software display-control support have since
+been added; see [current display-control findings](0008-software-display-control.md).
 
 ## Commands and artifacts
 

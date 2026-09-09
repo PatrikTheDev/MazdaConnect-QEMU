@@ -6,6 +6,7 @@ import struct
 import subprocess
 import sys
 import time
+from vnc_auth import challenge_response
 
 
 def main():
@@ -39,9 +40,10 @@ def main():
                 raise RuntimeError('Unexpected VNC protocol')
             connection.sendall(b'RFB 003.008\n')
             methods = receive(receive(1)[0])
-            if 1 not in methods:
-                raise RuntimeError('Expected local no-auth VNC')
-            connection.sendall(b'\1')
+            if 2 not in methods or 1 in methods:
+                raise RuntimeError('Expected password-authenticated VNC')
+            connection.sendall(b'\2')
+            connection.sendall(challenge_response(receive(16)))
             if receive(4) != b'\0'*4:
                 raise RuntimeError('VNC handshake failed')
             connection.sendall(b'\1')
