@@ -30,6 +30,7 @@ parser.add_argument('--trace-render', action='store_true', help='Trace Opera wai
 parser.add_argument('--sample-render', action='store_true', help='Sample Opera main-thread registers during startup')
 parser.add_argument('--inspect-surface', action='store_true', help='After the normal capture, explicitly show the browser surface for a separate diagnostic capture')
 parser.add_argument('--test-page', action='store_true')
+parser.add_argument('--trace-transitions', action='store_true', help='Log original UI animation callbacks and pending targets without changing timing rules')
 parser.add_argument('--probe-animations', action='store_true', help='Probe CSS animation support in original Opera without modifying firmware')
 parser.add_argument('--probe-websockets', action='store_true', help='Run an isolated diagnostic against the stock websocket JavaScript in original Opera')
 parser.add_argument('--no-hw-accel', action='store_true', help='Use Opera CPU painting instead of its GLES painter; both use CPU Mesa')
@@ -55,6 +56,8 @@ parser.add_argument('--verify-gpio', action='store_true', help='Check GPIO edge 
 parser.add_argument('--probe-lvds', action='store_true', help='Trace the stock display service with a real VirtIO framebuffer')
 parser.add_argument('--seconds', type=int, default=45)
 args = parser.parse_args()
+if args.trace_transitions and (not args.opera or args.test_page or args.probe_websockets or args.probe_animations):
+    parser.error('--trace-transitions requires the original GUI')
 if args.probe_animations and (not args.opera or args.test_page or args.probe_websockets):
     parser.error('--probe-animations requires Opera and cannot combine with another test page')
 if args.websockets_queue_fix and (not args.opera or args.test_page):
@@ -214,6 +217,8 @@ export COMMON_LOG_LEVEL=Debug
         commands = commands.replace('. /lab-software/start-services', 'export LAB_AUDIO_SERVICES=1\n. /lab-software/start-services')
     if args.intro_race_fix:
         commands = commands.replace('. /lab-software/start-services', 'export LAB_INTRO_RACE_FIX=1\n. /lab-software/start-services')
+    if args.trace_transitions:
+        commands = commands.replace('. /lab-software/start-services', 'export LAB_TRACE_TRANSITIONS=1\n. /lab-software/start-services')
     if args.websockets_queue_fix:
         commands = commands.replace('. /lab-software/start-services', 'export LAB_WEBSOCKETS_QUEUE_FIX=1\n. /lab-software/start-services')
     if args.time_deadline_fix:
@@ -267,7 +272,7 @@ finally:
 # QEMU has exited, so replay only this disposable output disk's journal before
 # inspecting it. Do not attempt general filesystem repairs on a failed run.
 subprocess.run(['e2fsck', '-p', '-E', 'journal_only', str(disk)], check=True)
-for name in ('websockets-queue-fix.json', 'time-deadline-fix.json', 'intro-race-fix.json', 'pattern.ppm', 'visible.ppm', 'buffer.ppm', 'compositor.log', 'compositor.core', 'opera.log', 'opera-strace.log', 'opera-samples.log', 'opera.core', 'syslog.log', 'syslog.log.0', 'nativegui.log', 'sm.log', 'smevents.txt', 'player.log', 'lvds.log', 'display.log', 'audio.log', 'audio-check.log', 'mic.wav', 'bluetooth.wav', 'vim.log', 'vip-trace.log', 'vip-service.log'):
+for name in ('transition-trace.json', 'websockets-queue-fix.json', 'time-deadline-fix.json', 'intro-race-fix.json', 'pattern.ppm', 'visible.ppm', 'buffer.ppm', 'compositor.log', 'compositor.core', 'opera.log', 'opera-strace.log', 'opera-samples.log', 'opera.core', 'syslog.log', 'syslog.log.0', 'nativegui.log', 'sm.log', 'smevents.txt', 'player.log', 'lvds.log', 'display.log', 'audio.log', 'audio-check.log', 'mic.wav', 'bluetooth.wav', 'vim.log', 'vip-trace.log', 'vip-service.log'):
     subprocess.run(['debugfs', '-R', f'dump /{name} {home / name}', str(disk)],
                    stdout=subprocess.PIPE, stderr=subprocess.STDOUT, check=True)
 if args.capture_sequence:

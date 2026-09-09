@@ -117,6 +117,9 @@ software-health-report run *args:
 software-startup-report run:
     docker compose -f compose.software.yaml run --rm lab python3 scripts/software/startup_report.py "$@"
 
+software-transition-trace *args:
+    just software-websockets-fix-probe --trace-transitions "$@"
+
 software-animations-probe:
     just software-opera-test --renderer llvmpipe --probe-animations --inspect-surface --seconds 20
 
