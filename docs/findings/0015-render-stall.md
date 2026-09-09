@@ -52,3 +52,39 @@ even after `UIA_SYSTEM_OnFinishIntroAnimation` receives video completion and
 reports HMI ready. These are unresolved leads; neither the stock JavaScript nor
 the readiness transitions have been patched. Interactive UI rendering remains
 unverified.
+
+## Stock startup sequencing
+
+The extracted `Websockets.js` is byte-identical to the reference rootfs archive
+(SHA-256 `40e21c3e7e661174f06b65c234788b3f0a78445685e0d784677f3dabc460cbd2`).
+Its message handler calls `this._isStack` and `this._delStack`, but both helpers
+are declared as global functions rather than `Websockets.prototype` methods.
+The exception is therefore consistent with the stock source. It does not by
+itself prove the cause of the stuck intro: the GUI still processes the
+`IntroAnimation` context and answers subsequent health checks.
+
+In `/software/test-6h0l0gd9`, the original system enters NormalState at 22:41:38,
+MMUI receives `ShowDisclaimer` at 22:41:40, and GUI startup settings trigger
+`StartIntroAnimation` at 22:41:45. Video completion arrives at 22:42:07.
+`UIA_SYSTEM_OnFinishIntroAnimation` at `libjciuiasystem.so:0x19780` sets the
+video-finished flag and reports HMI ready, but its context-table action keeps
+the current context. The log confirms next context 1023 (`IntroAnimation`).
+The system's normal-state notification callback at `0x2a4d0` emits event
+`0x5d3` when entering state 2 from another state; repeating a notification with
+old and new state both 2 does not emit that event.
+
+The stock system preparation function at `svcjciblmsystem.so:0x10b310` waits
+for display, TAU and audio conditions; the observed transition does not wait
+for GUI completion. The GUI sends `DisposeIntroVideo` when the disclaimer has
+actually displayed, not when the intro context is displayed. This makes the
+early disclaimer/late intro ordering a separate lead from the JavaScript
+exception. No synthetic disclaimer event or altered state transition has been
+introduced.
+
+`just software-ui-probe --renderer llvmpipe --browser-delay 0 --seconds 60`
+tests startup without the harness's fixed five-second browser delay. The
+default remains five seconds until the ordering investigation is resolved.
+The zero-delay run (`/software/test-muw55kg_`) kept Opera alive for 60 seconds
+but still ended with a black framebuffer and MMUI in `IntroAnimation`.
+NormalState preceded the intro again, and the same JavaScript exception was
+present. Removing the fixed delay alone is therefore insufficient.

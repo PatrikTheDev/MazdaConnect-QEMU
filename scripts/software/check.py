@@ -20,6 +20,7 @@ from audio_backend import AudioBackend
 parser = argparse.ArgumentParser(description=__doc__)
 parser.add_argument('--opera', action='store_true')
 parser.add_argument('--renderer', choices=('softpipe', 'llvmpipe'), default='softpipe')
+parser.add_argument('--browser-delay', type=int, default=5, help='Seconds between service launch and Opera launch for startup-order diagnostics')
 parser.add_argument('--live-output', action='store_true', help='Exercise the real VNC framebuffer in the bounded diagnostic')
 parser.add_argument('--trace-render', action='store_true', help='Trace Opera waits and software compositor frame stages')
 parser.add_argument('--sample-render', action='store_true', help='Sample Opera main-thread registers during startup')
@@ -48,6 +49,8 @@ parser.add_argument('--verify-gpio', action='store_true', help='Check GPIO edge 
 parser.add_argument('--probe-lvds', action='store_true', help='Trace the stock display service with a real VirtIO framebuffer')
 parser.add_argument('--seconds', type=int, default=45)
 args = parser.parse_args()
+if not 0 <= args.browser_delay <= 30:
+    parser.error('--browser-delay must be between 0 and 30')
 if not 5 <= args.seconds <= 180:
     parser.error('--seconds must be between 5 and 180')
 if (args.live_output or args.trace_render or args.sample_render) and not args.opera:
@@ -203,6 +206,7 @@ echo /tmp/software/opera.core''')
     if args.probe_lvds:
         commands = commands.replace('. /lab-software/start-services', 'export LAB_VENDOR_LVDS_PROBE=1\n. /lab-software/start-services')
         commands = commands.replace('sleep 5\necho /tmp/software/opera.core', '/bin/busybox timeout -t 5 /lab-modules/trace-driver /jci/lvds/lvds_service > /tmp/software/lvds.log 2>&1\necho LVDS_RC=$?\nsleep 5\necho /tmp/software/opera.core')
+    commands = commands.replace('sleep 5\n', f'sleep {args.browser_delay}\n', 1)
 try:
     deadline = time.monotonic() + args.seconds + 120
     while time.monotonic() < deadline:
