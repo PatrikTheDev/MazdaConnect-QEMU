@@ -19,7 +19,9 @@ from audio_backend import AudioBackend
 
 parser = argparse.ArgumentParser(description=__doc__)
 parser.add_argument('--opera', action='store_true')
+parser.add_argument('--time-deadline-fix', action='store_true', help='Enable original time services with the documented deadline clock patch')
 parser.add_argument('--intro-race-fix', action='store_true', help='Opt in to the documented MMUI intro completion race patch')
+parser.add_argument('--time-services', action='store_true', help='Probe the original CPP and BLM time services')
 parser.add_argument('--renderer', choices=('softpipe', 'llvmpipe'), default='softpipe')
 parser.add_argument('--browser-delay', type=int, default=5, help='Seconds between service launch and Opera launch for startup-order diagnostics')
 parser.add_argument('--live-output', action='store_true', help='Exercise the real VNC framebuffer in the bounded diagnostic')
@@ -51,6 +53,8 @@ parser.add_argument('--verify-gpio', action='store_true', help='Check GPIO edge 
 parser.add_argument('--probe-lvds', action='store_true', help='Trace the stock display service with a real VirtIO framebuffer')
 parser.add_argument('--seconds', type=int, default=45)
 args = parser.parse_args()
+if (args.time_deadline_fix or args.time_services) and (not args.opera or args.test_page or args.probe_websockets):
+    parser.error('Time services require the original GUI')
 if args.intro_race_fix and (not args.opera or args.test_page or args.probe_websockets):
     parser.error('--intro-race-fix requires the original GUI')
 if args.probe_websockets and (not args.opera or args.test_page):
@@ -202,6 +206,10 @@ export COMMON_LOG_LEVEL=Debug
         commands = commands.replace('. /lab-software/start-services', 'export LAB_AUDIO_SERVICES=1\n. /lab-software/start-services')
     if args.intro_race_fix:
         commands = commands.replace('. /lab-software/start-services', 'export LAB_INTRO_RACE_FIX=1\n. /lab-software/start-services')
+    if args.time_deadline_fix:
+        commands = commands.replace('. /lab-software/start-services', 'export LAB_TIME_DEADLINE_FIX=1\n. /lab-software/start-services')
+    if args.time_services:
+        commands = commands.replace('. /lab-software/start-services', 'export LAB_TIME_SERVICES=1\n. /lab-software/start-services')
     if args.probe_vim:
         commands = commands.replace('echo /tmp/software/opera.core', '/lab-software/vip-trace > /tmp/software/vip-trace.log 2>&1 &\n/bin/busybox timeout -t 8 /lab-modules/trace-driver /jci/vim/vim_app > /tmp/software/vim.log 2>&1\necho VIM_PROBE_RC=$?\necho /tmp/software/opera.core')
     if args.probe_audio:
@@ -249,7 +257,7 @@ finally:
 # QEMU has exited, so replay only this disposable output disk's journal before
 # inspecting it. Do not attempt general filesystem repairs on a failed run.
 subprocess.run(['e2fsck', '-p', '-E', 'journal_only', str(disk)], check=True)
-for name in ('intro-race-fix.json', 'pattern.ppm', 'visible.ppm', 'buffer.ppm', 'compositor.log', 'compositor.core', 'opera.log', 'opera-strace.log', 'opera-samples.log', 'opera.core', 'syslog.log', 'syslog.log.0', 'nativegui.log', 'sm.log', 'smevents.txt', 'player.log', 'lvds.log', 'display.log', 'audio.log', 'audio-check.log', 'mic.wav', 'bluetooth.wav', 'vim.log', 'vip-trace.log', 'vip-service.log'):
+for name in ('time-deadline-fix.json', 'intro-race-fix.json', 'pattern.ppm', 'visible.ppm', 'buffer.ppm', 'compositor.log', 'compositor.core', 'opera.log', 'opera-strace.log', 'opera-samples.log', 'opera.core', 'syslog.log', 'syslog.log.0', 'nativegui.log', 'sm.log', 'smevents.txt', 'player.log', 'lvds.log', 'display.log', 'audio.log', 'audio-check.log', 'mic.wav', 'bluetooth.wav', 'vim.log', 'vip-trace.log', 'vip-service.log'):
     subprocess.run(['debugfs', '-R', f'dump /{name} {home / name}', str(disk)],
                    stdout=subprocess.PIPE, stderr=subprocess.STDOUT, check=True)
 if args.capture_sequence:

@@ -7,6 +7,12 @@ if [ "${LAB_INTRO_RACE_FIX:-0}" = 1 ]; then
     cp /lab-software/intro-race-fix.json "$LAB_LOG_DIR/intro-race-fix.json" || return 1
     echo 'LAB_INTRO_RACE_FIX enabled: original disclaimer event after completed intro in Normal state'
 fi
+if [ "${LAB_TIME_DEADLINE_FIX:-0}" = 1 ]; then
+    cp /lab-software/svcjciblmtime-deadline-fix.so /jci/time/svcjciblmtime.so || return 1
+    cp /lab-software/time-deadline-fix.json "$LAB_LOG_DIR/time-deadline-fix.json" || return 1
+    export LAB_TIME_SERVICES=1
+    echo 'LAB_TIME_DEADLINE_FIX enabled: CLOCK_REALTIME deadline for stock sem_timedwait'
+fi
 mount -t ext4 -o ro,noload "$(/bin/busybox findfs LABEL=MAZDA_MESA)" /lab-software/runtime || return 1
 cp /jci/integration/config-mfg-bak/passwd /config-mfg/passwd
 chown cmu /tmp/mnt/data /tmp/mnt/data_persist
@@ -41,5 +47,8 @@ lab_sm_config=/lab-software/sm.conf
 if [ "${LAB_AUDIO_SERVICES:-0}" = 1 ]; then
     /lab-software/configure-audio > "$LAB_LOG_DIR/audio-config.log" 2>&1 || return 1
     lab_sm_config=/lab-software/sm-audio.conf
+fi
+if [ "${LAB_TIME_SERVICES:-0}" = 1 ]; then
+    lab_sm_config="${lab_sm_config%.conf}-time.conf"
 fi
 /jci/sm/sm -f "$lab_sm_config" -e "$LAB_LOG_DIR/smevents.txt" > "$LAB_LOG_DIR/sm.log" 2>&1 &

@@ -121,6 +121,16 @@ software-intro-fix-test:
 software-intro-fix-probe *args:
     just software-ui-probe --renderer llvmpipe --intro-race-fix "$@"
 
+# Verify the exact firmware change without stopping a live guest.
+software-time-fix-test:
+    docker compose -f compose.software.yaml run --rm lab python3 scripts/software/check_time_fix.py
+
+software-time-fix-probe *args:
+    just software-time-probe --time-deadline-fix "$@"
+
+software-time-probe *args:
+    just software-intro-fix-probe --time-services "$@"
+
 software-audio-test:
     just software-opera-test --audio-devices --microphone-tone 700 --probe-audio --probe-vip-service --verify-audio --seconds 10 --debug-services
 

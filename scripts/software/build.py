@@ -42,6 +42,9 @@ if args.opera:
     from build_intro_fix import build as build_intro_fix
     files.append(('lab-software/libjciuiasystem-intro-fix.so', build_intro_fix(home), 0o755))
     files.append(('lab-software/intro-race-fix.json', (home / 'intro-race-fix.json').read_bytes(), 0o644))
+    from build_time import build as build_time_fix
+    files.append(('lab-software/svcjciblmtime-deadline-fix.so', build_time_fix(home), 0o755))
+    files.append(('lab-software/time-deadline-fix.json', (home / 'time-deadline-fix.json').read_bytes(), 0o644))
     sampler = home / 'sample-process'
     subprocess.run(['arm-linux-gnueabi-gcc', '-static', '-O2', '-Wall', '-Wextra', '-Werror',
                     'src/tools/sample-process.c', '-o', str(sampler)], check=True)
@@ -123,6 +126,9 @@ if args.opera:
     files.append(('lab-software/configure-audio', Path('overlays/software/configure-audio').read_bytes(), 0o755))
     files.append(('lab-software/audio-adapter.conf', alsa_adapter(), 0o644))
     files.append(('lab-software/sm-audio.conf', service_config(), 0o644))
+    from build_time import service_config as time_service_config
+    files.append(('lab-software/sm-audio-time.conf', time_service_config(service_config()), 0o644))
+    files.append(('lab-software/sm-time.conf', time_service_config(Path('overlays/software/sm.conf').read_bytes()), 0o644))
     files = [(name, b'plugin = ivi, software, xkb\ninput = /dev/input/event1, /dev/input/event2\nxkbmap = /usr/share/wayland/evdev-pc105-us.xkm\n' if name.endswith('/compositor.conf') else data, mode) for name, data, mode in files]
     files.append(('lab-software/sm.conf', Path('overlays/software/sm.conf').read_bytes(), 0o644))
     directories += ['lab-software/runtime']

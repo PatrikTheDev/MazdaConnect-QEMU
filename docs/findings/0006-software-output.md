@@ -123,7 +123,10 @@ original system service. That module is separate from the viewer milestone.
 
 ## Continuous VNC viewer
 
-Run `just software-boot` to build and start the original UI services. In another
+Run `just software-boot --renderer llvmpipe --intro-race-fix` to build and start
+the original UI with the [documented opt-in startup fix](0016-intro-race-fix.md).
+The earlier sections record intermediate investigation results; the linked
+finding includes verified HomeScreen and Settings interaction. In another
 terminal, run `just software-view` to open macOS Screen Sharing at
 `vnc://127.0.0.1:5901`. QEMU starts its VNC server before guest startup; the default
 five-second service delay allows time to connect. Use `--start-delay 20` if needed.
@@ -132,19 +135,19 @@ The CPU compositor writes each completed frame to the guest's 800×480 XRGB8888
 VirtIO framebuffer. QEMU's native VNC server streams that scanout continuously.
 The framebuffer is put into graphics mode to prevent the kernel console cursor
 from overwriting UI pixels. This uses the generic VirtIO display, with Mesa still
-forced to softpipe; it does not use the Vivante work. VNC is published only on the
+using CPU rendering; it does not use the Vivante work. VNC is published only on the
 host's loopback interface. Enter the development password `mazda` in macOS
 Screen Sharing. Password authentication is enabled for compatibility with that
 client; this public lab credential is not intended for remote exposure.
 
 Useful recipes:
 
-- `just software-run`: restart the existing build without rebuilding.
+- `just software-run --renderer llvmpipe --intro-race-fix`: restart the working UI configuration without rebuilding.
 - `just software-stop`: cleanly shut down the foreground guest from another terminal.
 - `just software-status`: inspect the QEMU state and connected VNC clients.
 - `just software-capture`: save the current scanout as `artifacts/software-live.png`.
 - `just software-boot --test-page`: show the controlled browser page.
-- `just software-boot --seconds 65 --start-delay 0`: bounded original-UI startup.
+- `just software-boot --renderer llvmpipe --intro-race-fix --seconds 90 --start-delay 0`: bounded original-UI startup.
 - `just software-vnc-test`: verify RFB updates, desktop size, exact colors and text.
 
 Ctrl-C also shuts down the guest. Live logs are saved under `runs/software-live*`

@@ -7,8 +7,12 @@ This base provides repeatable Linux tooling, verified package storage, outer ZIP
 extraction, a QEMU launch profile, and a read-only vehicle inventory script.
 EU 74.00.324A has now been acquired and analyzed; its original BusyBox runs under
 QEMU user-mode with its original libraries. A full-system QEMU guest now also boots
-the Mazda rootfs to a lab shell using a pinned generic kernel. Vehicle services
-and the UI are not running yet. See [firmware findings](docs/findings/0002-eu-v74-analysis.md)
+the Mazda rootfs using a pinned generic kernel. The software-rendering lab runs
+the original intro, disclaimer, home menu and Settings screen over VNC, with
+verified keyboard navigation. This currently requires llvmpipe and an explicit
+[documented intro race fix](docs/findings/0016-intro-race-fix.md). It is not a
+complete vehicle simulation; remaining service and websocket issues are under
+investigation. See [firmware findings](docs/findings/0002-eu-v74-analysis.md)
 and [boot instructions](docs/guest.md).
 
 ## Start
@@ -33,6 +37,21 @@ With the verified firmware already analyzed in the lab volume, run
 `just compositor-test` verifies actual Wayland client communication.
 The Vivante output path still requires an absent GPU device; see
 [the crash diagnosis](docs/findings/0005-mounted-resources-compositor.md).
+
+For the original UI through the software-rendering path, after preparing the
+reference guest and resources:
+
+```sh
+just software-image
+just software-prepare
+just software-boot --renderer llvmpipe --intro-race-fix
+```
+
+In another terminal, run `just software-view` (VNC password: `mazda`). Use
+`just software-key right`, `just software-key ret` and `just software-capture`
+to navigate and capture the display. `just software-stop` stops the guest and
+retains diagnostics. The firmware patch is opt-in and does not alter the
+reference package. The separate Vivante work is not needed for this path.
 
 `just test` checks package integrity handling, archive traversal rejection,
 shell scripts, execution of a compiled ARM Linux probe through qemu-arm, and
@@ -103,3 +122,11 @@ you intend to delete the lab data. Back it up before removing the Docker runtime
 
 See [layout and patch rules](docs/layout.md), [guest setup](docs/guest.md),
 [vehicle collection](docs/vehicle.md), and [research sources](docs/sources.md).
+
+The separately approved time-service deadline correction is also opt-in:
+`just software-boot --renderer llvmpipe --intro-race-fix --time-deadline-fix`.
+It enables the original time services and corrects their semaphore deadline's
+clock domain. Both original time services now start, and the home screen displays
+the guest time; the full boot and minute callback have been verified.
+See [the time-service findings](docs/findings/0017-time-deadline-fix.md) for
+scope, hashes and diagnostic recipes.
