@@ -1,0 +1,60 @@
+<!doctype html>
+<meta charset="utf-8">
+<title>Original Opera animation diagnostic</title>
+<link rel="stylesheet" href="file:///jci/gui/common/transitions/css/TransitionsGen.css">
+<style>
+body {background:#16324f;color:white;font:16px monospace}
+.box {position:absolute;top:400px;width:60px;height:60px;background:red}
+@keyframes labfade {from {opacity:0.1} to {opacity:1}}
+@-o-keyframes labofade {from {opacity:0.1} to {opacity:1}}
+@-webkit-keyframes labwfade {from {opacity:0.1} to {opacity:1}}
+.standard {animation:labfade 1000ms linear both}
+.opera {-o-animation:labofade 1000ms linear both}
+.webkit {-webkit-animation:labwfade 1000ms linear both}
+</style>
+<h3>Original Opera animation diagnostic</h3><pre id="output"></pre>
+<div id="stock" class="box" style="left:10px"></div>
+<div id="standard" class="box" style="left:100px"></div>
+<div id="opera" class="box" style="left:190px"></div>
+<div id="webkit" class="box" style="left:280px"></div>
+<div id="manager" class="box" style="left:370px"></div>
+<script>var log={addSrcFile:function(){},debug:function(){},info:function(){},warn:function(){},error:function(){}};</script>
+<script src="file:///jci/gui/common/transitions/js/Transitions.js"></script>
+<script>
+(function() {
+ var out=document.getElementById('output');
+ function report(s) {out.appendChild(document.createTextNode(s+'\n'));}
+ var ids=['stock','standard','opera','webkit','manager'];
+ var manager=Object.create(Transitions.prototype);
+ manager._TRANSITION_ELEMENT_PREFIX='transitionElement_';
+ manager._animationTargetDescriptions={};
+ manager._animationEndEventCallbackBound=manager._animationEndEventCallback.bind(manager);
+ manager._transitionCompleted=function(){report('original manager cleanup=COMPLETE');};
+ var events={};
+ for(var i=0;i<ids.length;i++) {
+  var e=document.getElementById(ids[i]);events[ids[i]]=[];
+  ['animationend','oAnimationEnd','webkitAnimationEnd'].forEach(function(type) {
+   e.addEventListener(type,function(ev) {events[ev.target.id].push(ev.type);});
+  });
+ }
+ function sample(label) {
+  var values=[];
+  for(var i=0;i<ids.length;i++) values.push(ids[i]+':'+getComputedStyle(document.getElementById(ids[i])).opacity);
+  report(label+' '+values.join(' '));
+ }
+ setTimeout(function() {
+  document.getElementById('stock').className='box Transitions_dialog_bkgrnd_fadeOut_0_200';
+  for(var i=1;i<4;i++) document.getElementById(ids[i]).className='box '+ids[i];
+  var target=document.getElementById('manager');
+  target.classList.add('Transitions_fadeIn_300_300');
+  manager._setCleanupByEventListener(target);
+  sample('start');
+  setTimeout(function(){sample('at 500ms');},500);
+  setTimeout(function(){
+   sample('at 2000ms');
+   for(var i=0;i<ids.length;i++) report(ids[i]+' events: '+(events[ids[i]].join(',') || 'NONE'));
+   report('done=true');
+  },2000);
+ },1000);
+}());
+</script>

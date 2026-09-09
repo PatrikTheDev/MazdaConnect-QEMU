@@ -30,6 +30,7 @@ parser.add_argument('--trace-render', action='store_true', help='Trace Opera wai
 parser.add_argument('--sample-render', action='store_true', help='Sample Opera main-thread registers during startup')
 parser.add_argument('--inspect-surface', action='store_true', help='After the normal capture, explicitly show the browser surface for a separate diagnostic capture')
 parser.add_argument('--test-page', action='store_true')
+parser.add_argument('--probe-animations', action='store_true', help='Probe CSS animation support in original Opera without modifying firmware')
 parser.add_argument('--probe-websockets', action='store_true', help='Run an isolated diagnostic against the stock websocket JavaScript in original Opera')
 parser.add_argument('--no-hw-accel', action='store_true', help='Use Opera CPU painting instead of its GLES painter; both use CPU Mesa')
 parser.add_argument('--tau-state', choices=('standby', 'connected', 'disconnected'), default='connected')
@@ -54,11 +55,13 @@ parser.add_argument('--verify-gpio', action='store_true', help='Check GPIO edge 
 parser.add_argument('--probe-lvds', action='store_true', help='Trace the stock display service with a real VirtIO framebuffer')
 parser.add_argument('--seconds', type=int, default=45)
 args = parser.parse_args()
+if args.probe_animations and (not args.opera or args.test_page or args.probe_websockets):
+    parser.error('--probe-animations requires Opera and cannot combine with another test page')
 if args.websockets_queue_fix and (not args.opera or args.test_page):
     parser.error('--websockets-queue-fix requires Opera and the original websocket code')
-if (args.time_deadline_fix or args.time_services) and (not args.opera or args.test_page or args.probe_websockets):
+if (args.time_deadline_fix or args.time_services) and (not args.opera or args.test_page or args.probe_websockets or args.probe_animations):
     parser.error('Time services require the original GUI')
-if args.intro_race_fix and (not args.opera or args.test_page or args.probe_websockets):
+if args.intro_race_fix and (not args.opera or args.test_page or args.probe_websockets or args.probe_animations):
     parser.error('--intro-race-fix requires the original GUI')
 if args.probe_websockets and (not args.opera or args.test_page):
     parser.error('--probe-websockets requires --opera and cannot use --test-page')
@@ -183,6 +186,8 @@ kill $lab_opera_pid
         commands = commands.replace('cp /tmp/software/frame.ppm /tmp/software/visible.ppm', '/lab-software/runtime/ld-linux.so.3 --library-path /lab-software/runtime /lab-software/display-check\ncp /tmp/software/frame.ppm /tmp/software/visible.ppm')
     if args.test_page:
         commands = commands.replace('-u /jci/gui/index.html', '-u /lab-software/render-test.html')
+    if args.probe_animations:
+        commands = commands.replace('-u /jci/gui/index.html', '-u /lab-software/animations-probe.html')
     if args.probe_websockets:
         commands = commands.replace('-u /jci/gui/index.html', '-u /lab-software/websockets-probe.html')
     if args.no_hw_accel:
