@@ -88,3 +88,26 @@ The zero-delay run (`/software/test-muw55kg_`) kept Opera alive for 60 seconds
 but still ended with a black framebuffer and MMUI in `IntroAnimation`.
 NormalState preceded the intro again, and the same JavaScript exception was
 present. Removing the fixed delay alone is therefore insufficient.
+
+Use `just software-startup-report /software/test-muw55kg_` to reproduce the
+milestone ordering with exact firmware log lines and source line numbers. It
+also works on retained live-run directories and does not infer UI readiness.
+Both this probe and `/software/test-6h0l0gd9` show the same sequence: SM reports
+boot finished, the system enters Normal, MMUI handles ShowDisclaimer, GUI
+startup launches the intro, and playback completion reports HMI ready without
+a subsequent disclaimer context.
+
+The zero-delay run confirms that ShowDisclaimer was handled successfully:
+`UIAHLP_RequestFocusAndExecuteActionFunctions` calls the Disclaimer enter action
+at 22:55:29, before startup settings launch the video at 22:55:32. Thus it was
+not merely a dropped D-Bus signal. In the original system binary,
+`SYSTEM_SMM_GuiAvailable` posts event 5 (`0x11d894`); the NormalState dispatch
+entry for event 5 at `0x111944` branches to its no-action path. These observations
+explain why completion cannot recover this ordering by itself.
+
+Proposed next experiment, pending architecture approval: opt-in, hash-checked
+firmware fixes for the websocket method binding and an intro-completion path
+that resumes the original disclaimer flow if the system is already Normal.
+The reference firmware remains unchanged. Delaying device success replies or
+injecting an unconditional disclaimer event would conceal the race and is not
+the proposed fix.
