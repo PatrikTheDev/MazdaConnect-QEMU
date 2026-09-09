@@ -39,6 +39,10 @@ files = [('lab-software/libwlxs-software.so', plugin.read_bytes(), 0o755),
          ('lab-software/compositor.conf', b'plugin = ivi, software\n', 0o644)]
 directories = ['lab-software']
 if args.opera:
+    sampler = home / 'sample-process'
+    subprocess.run(['arm-linux-gnueabi-gcc', '-static', '-O2', '-Wall', '-Wextra', '-Werror',
+                    'src/tools/sample-process.c', '-o', str(sampler)], check=True)
+    files.append(('lab-software/sample-process', sampler.read_bytes(), 0o755))
     for name in ('display-service', 'display-check'):
         binary = home / name
         subprocess.run(['arm-linux-gnueabi-gcc', '-O2', '-Wall', '-Wextra', '-Werror',

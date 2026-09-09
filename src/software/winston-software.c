@@ -11,10 +11,17 @@
 #include <unistd.h>
 #include <sys/socket.h>
 #include <sys/un.h>
+#include <sys/time.h>
 #include "display-control.h"
 
 enum { WIDTH = 800, HEIGHT = 480 };
 static void save_pixels(const char *, const uint32_t *);
+static void trace_render(const char *stage) {
+    if (!getenv("MAZDA_RENDER_TRACE")) return;
+    struct timeval now;
+    gettimeofday(&now,NULL);
+    fprintf(stderr,"RENDER %ld.%06ld %s\n",(long)now.tv_sec,(long)now.tv_usec,stage);
+}
 static void display_pixels(const uint32_t *pixels) {
     static void *memory;
     static unsigned stride;
@@ -72,6 +79,7 @@ static void trigger(struct output *out) {
     struct software *sw = owner(out);
     if (!sw->pending && sw->timer) {
         sw->pending = 1;
+        trace_render("schedule");
         wl_event_source_timer_update(sw->timer, 16);
     }
 }
@@ -186,14 +194,20 @@ static void save_pixels(const char *path, const uint32_t *pixels) {
 static int repaint(void *data) {
     struct software *sw=data;
     sw->pending=0;
+    trace_render("begin");
     wlxs_compositor_frame_update(sw->output.compositor,&sw->output);
+    trace_render("updated");
     memset(sw->frame,0,sizeof(sw->frame));
     wlxs_output_repaint(&sw->output,draw);
+    trace_render("painted");
     if (sw->blank) memset(sw->frame,0,sizeof(sw->frame));
     display_pixels(sw->frame);
+    trace_render("displayed");
     const char *path=getenv("MAZDA_SOFTWARE_FRAME");
     save_pixels(path ? path : "/tmp/software-frame.ppm",sw->frame);
+    trace_render("saved");
     wlxs_output_post_frames(&sw->output);
+    trace_render("callbacks");
     return 0;
 }
 /* Poll separately from repaint: blank/unblank must work with an idle client. */

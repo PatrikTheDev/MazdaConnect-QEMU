@@ -19,6 +19,9 @@ from audio_backend import AudioBackend
 
 parser = argparse.ArgumentParser(description=__doc__)
 parser.add_argument('--opera', action='store_true')
+parser.add_argument('--live-output', action='store_true', help='Exercise the real VNC framebuffer in the bounded diagnostic')
+parser.add_argument('--trace-render', action='store_true', help='Trace Opera waits and software compositor frame stages')
+parser.add_argument('--sample-render', action='store_true', help='Sample Opera main-thread registers during startup')
 parser.add_argument('--inspect-surface', action='store_true', help='After the normal capture, explicitly show the browser surface for a separate diagnostic capture')
 parser.add_argument('--test-page', action='store_true')
 parser.add_argument('--no-hw-accel', action='store_true', help='Use Opera CPU painting instead of its GLES painter; both use CPU Mesa')
@@ -46,6 +49,10 @@ parser.add_argument('--seconds', type=int, default=45)
 args = parser.parse_args()
 if not 5 <= args.seconds <= 180:
     parser.error('--seconds must be between 5 and 180')
+if (args.live_output or args.trace_render or args.sample_render) and not args.opera:
+    parser.error('Live output and render tracing require --opera')
+if args.trace_render and args.sample_render:
+    parser.error('Syscall tracing and register sampling cannot attach to the same process')
 if (args.verify_vbs or args.verify_tau) and not (args.probe_vip_service and args.debug_services):
     parser.error('--verify-vbs requires --probe-vip-service --debug-services')
 if args.verify_video and (not args.opera or args.test_page or not args.capture_sequence or not args.debug_services):
@@ -75,7 +82,7 @@ with disk.open('wb') as stream:
 subprocess.run(['mkfs.ext4', '-q', '-F', '-L', 'MAZDA_SOFTWARE', str(disk)], check=True)
 settings = json.loads(Path('/software/guest/profile.json').read_text())
 settings['disks'].append({'path': str(disk), 'read_only': False})
-cmd = software_command(settings, live=args.probe_lvds or args.verify_display,
+cmd = software_command(settings, live=args.probe_lvds or args.verify_display or args.live_output,
                        audio_dir=home if args.audio_devices else None) if args.opera else command(settings)
 audio = AudioBackend(home, args.microphone_tone).start() if args.audio_devices else None
 try:
@@ -118,8 +125,10 @@ sync
 poweroff -f
 '''
 if args.opera:
-    if args.probe_lvds or args.verify_display:
+    if args.probe_lvds or args.verify_display or args.live_output:
         commands = commands.replace('export MAZDA_SOFTWARE_FRAME=', 'export MAZDA_SOFTWARE_FB=/dev/fb0\nexport MAZDA_SOFTWARE_FRAME=')
+    if args.trace_render or args.sample_render:
+        commands = commands.replace('export MAZDA_SOFTWARE_FRAME=', 'export MAZDA_RENDER_TRACE=1\nexport MAZDA_SOFTWARE_FRAME=')
     if args.inspect_buffer:
         commands = commands.replace('export MAZDA_SOFTWARE_FRAME=', 'export MAZDA_SOFTWARE_BUFFER=/tmp/software/buffer.ppm\nexport MAZDA_SOFTWARE_FRAME=')
     commands = commands.replace('/usr/bin/wayland-viv-compositor -l 7', '/lab-software/load-input\n/usr/bin/wayland-viv-compositor -l 7')
@@ -158,6 +167,10 @@ kill $lab_opera_pid
         commands = commands.replace('-u /jci/gui/index.html', '-u /lab-software/render-test.html')
     if args.no_hw_accel:
         commands = commands.replace('/lab-software/run-opera -u', '/lab-software/run-opera --noHWAccel -u')
+    if args.trace_render:
+        commands = commands.replace('/lab-software/run-opera ', '/usr/bin/strace -f -tt -T -e trace=poll,select,epoll_wait,futex,recvmsg,sendmsg -o /tmp/software/opera-strace.log /lab-software/run-opera ')
+    if args.sample_render:
+        commands = commands.replace('lab_opera_pid=$!\n', 'lab_opera_pid=$!\n/lab-software/sample-process "$lab_opera_pid" > /tmp/software/opera-samples.log 2>&1 &\n')
     commands = commands.replace('sleep 25\n', 'sleep ' + str(args.seconds) + '\n')
     if args.debug_services:
         commands = commands.replace('. /lab-software/start-services', '''mkdir -p /tmp/common/log
@@ -220,7 +233,7 @@ finally:
 # QEMU has exited, so replay only this disposable output disk's journal before
 # inspecting it. Do not attempt general filesystem repairs on a failed run.
 subprocess.run(['e2fsck', '-p', '-E', 'journal_only', str(disk)], check=True)
-for name in ('pattern.ppm', 'visible.ppm', 'buffer.ppm', 'compositor.log', 'compositor.core', 'opera.log', 'opera.core', 'syslog.log', 'syslog.log.0', 'nativegui.log', 'sm.log', 'smevents.txt', 'player.log', 'lvds.log', 'display.log', 'audio.log', 'audio-check.log', 'mic.wav', 'bluetooth.wav', 'vim.log', 'vip-trace.log', 'vip-service.log'):
+for name in ('pattern.ppm', 'visible.ppm', 'buffer.ppm', 'compositor.log', 'compositor.core', 'opera.log', 'opera-strace.log', 'opera-samples.log', 'opera.core', 'syslog.log', 'syslog.log.0', 'nativegui.log', 'sm.log', 'smevents.txt', 'player.log', 'lvds.log', 'display.log', 'audio.log', 'audio-check.log', 'mic.wav', 'bluetooth.wav', 'vim.log', 'vip-trace.log', 'vip-service.log'):
     subprocess.run(['debugfs', '-R', f'dump /{name} {home / name}', str(disk)],
                    stdout=subprocess.PIPE, stderr=subprocess.STDOUT, check=True)
 if args.capture_sequence:
