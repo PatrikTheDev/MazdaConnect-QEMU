@@ -69,3 +69,17 @@ remained alive. This is distinct from the intro's final still image.
 The ARM ABI/state tests and `just test` pass. Original websocket exceptions
 still occur, and menu interaction needs separate verification; this result
 does not establish that all supporting services or UI functions are complete.
+
+The subsequent live run `/software/live-m0zcw1xt` used
+`just software-boot --renderer llvmpipe --intro-race-fix --seconds 180`.
+The VNC framebuffer showed the original HomeScreen. `just software-key right`
+moved its selection from Communication to Navigation; a second right followed
+by `just software-key ret` opened the original Settings/Display screen. The
+Settings screenshot is retained locally as `artifacts/software-settings-verified.png`.
+The bounded shutdown occurred before a return-to-home capture, so that action
+is not verified. The status clock still reads 00:00 and websocket exceptions
+remain unresolved; further service and interaction checks are needed.
+
+The retained live manifest identifies patched SHA-256
+`bc8e213013e9090e17acb287f1727b72d7873f0b357712fb335b2fb72e48b91c`,
+code at `0x6f79c` and state storage at `0x8ee54`.
