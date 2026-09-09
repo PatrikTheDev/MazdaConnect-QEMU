@@ -45,6 +45,9 @@ if args.opera:
     from build_time import build as build_time_fix
     files.append(('lab-software/svcjciblmtime-deadline-fix.so', build_time_fix(home), 0o755))
     files.append(('lab-software/time-deadline-fix.json', (home / 'time-deadline-fix.json').read_bytes(), 0o644))
+    from build_websockets_fix import build as build_websockets_fix
+    files.append(('lab-software/Websockets-queue-fix.js', build_websockets_fix(home), 0o644))
+    files.append(('lab-software/websockets-queue-fix.json', (home / 'websockets-queue-fix.json').read_bytes(), 0o644))
     sampler = home / 'sample-process'
     subprocess.run(['arm-linux-gnueabi-gcc', '-static', '-O2', '-Wall', '-Wextra', '-Werror',
                     'src/tools/sample-process.c', '-o', str(sampler)], check=True)

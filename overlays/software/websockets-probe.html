@@ -1,7 +1,7 @@
 <!doctype html>
 <meta charset="utf-8">
 <title>Stock websocket runtime diagnostic</title>
-<style>body {background:#16324f;color:white;font:20px monospace} pre {white-space:pre-wrap}</style>
+<style>body {background:#16324f;color:white;font:14px monospace} pre {white-space:pre-wrap}</style>
 <h2>Stock websocket runtime diagnostic</h2>
 <pre id="output"></pre>
 <script>
@@ -22,7 +22,7 @@ var log = {addSrcFile:function(){}, debug:function(){}, info:function(){},
         var json = JSON.stringify({msgType:'transition', enabled:false});
         ws._waitMsgArray = [[json, 7]];
         report('method_type', typeof ws._isStack);
-        report('queued_transition_found', _isStack.call(ws, 'transition', 7));
+        report('queued_transition_found', (ws._isStack || _isStack).call(ws, 'transition', 7));
         var text = json + String.fromCharCode(7);
         var bytes = new Uint8Array([].map.call(text, function(c) {return c.charCodeAt(0);}));
         var buffer = bytes.buffer;
@@ -32,6 +32,57 @@ var log = {addSrcFile:function(){}, debug:function(){}, info:function(){},
         report('stock_sequence', buffer[length]);
         report('stock_json_length', text.substring(0, length).length);
         report('expected_json_length', json.length);
+        if (typeof ws._isStack === 'function') {
+            var routed = [];
+            var errors = [];
+            log.error = function(message) { errors.push(message); };
+            window.framework = {routeMmuiMsg:function(message) {routed.push(message.msgType);}};
+            window.WebSocket = function() {this.readyState = 1;};
+            function check(name, condition) {
+                report(name, condition ? 'PASS' : 'FAIL');
+                if (!condition) throw new Error(name);
+            }
+            function reset() {
+                routed = []; errors = [];
+                mRecvMsgCounter = 0; mMmuiWebsocketSeqCounter = 0;
+                mMmuiWebsocketWaitSeqCounter = 0; mDoFocus = 0;
+                ws._waitMsgArray = [];
+                ws._hasInitGui = true;
+                ws._mmuiSocket = {uri:'unused', protocol:'unused'};
+                ws._openMmui();
+            }
+            function receive(type, sequence) {
+                var data = JSON.stringify({msgType:type});
+                if (sequence !== undefined) data += String.fromCharCode(sequence);
+                ws._mmuiWs.onmessage({data:data});
+            }
+            reset();
+            receive('ctxtChg', 7); receive('focusStack', 7); receive('transition', 7);
+            check('ordered_delivery', routed.join(',') === 'ctxtChg,focusStack,transition');
+            reset();
+            receive('ctxtChg', 8); receive('transition', 8);
+            check('transition_waits_for_focus', routed.join(',') === 'ctxtChg' && ws._waitMsgArray.length === 1);
+            receive('focusStack', 8);
+            check('queued_transition_delivered_once', routed.join(',') === 'ctxtChg,focusStack,transition' && ws._waitMsgArray.length === 0);
+            reset();
+            receive('focusStack', 9); receive('transition', 9); receive('ctxtChg', 9);
+            check('context_releases_focus_transition', routed.join(',') === 'ctxtChg,focusStack,transition' && ws._waitMsgArray.length === 0);
+            reset();
+            ws._waitMsgArray = [[JSON.stringify({msgType:'transition'}), 10], [JSON.stringify({msgType:'focusStack'}), 11]];
+            check('sequence_isolation', !ws._isStack('transition', 11) && ws._isStack('transition', 10));
+            ws._delStack('transition', 10);
+            check('delete_preserves_other_sequence', ws._waitMsgArray.length === 1 && ws._waitMsgArray[0][1] === 11);
+            receive('ctxtChg', 12);
+            check('context_queue_tuple', ws._waitMsgArray[1][1] === 12 && JSON.parse(ws._waitMsgArray[1][0]).msgType === 'ctxtChg');
+            mRecvMsgCounter = 49;
+            receive('msg');
+            check('forced_flush_routes_json', routed.join(',') === 'focusStack,ctxtChg,msg' && errors.length === 0 && ws._waitMsgArray.length === 0);
+            reset();
+            receive('ctxtChg', 255); receive('focusStack', 255); receive('transition', 255);
+            receive('ctxtChg', 0); receive('focusStack', 0); receive('transition', 0);
+            check('sequence_wrap', routed.length === 6 && ws._waitMsgArray.length === 0);
+            report('queue_tests', 'PASS');
+        }
         report('done', true);
     } catch (error) {
         report('exception', error);

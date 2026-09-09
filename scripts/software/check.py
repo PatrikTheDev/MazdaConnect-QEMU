@@ -19,6 +19,7 @@ from audio_backend import AudioBackend
 
 parser = argparse.ArgumentParser(description=__doc__)
 parser.add_argument('--opera', action='store_true')
+parser.add_argument('--websockets-queue-fix', action='store_true', help='Apply the documented opt-in original GUI queue correction')
 parser.add_argument('--time-deadline-fix', action='store_true', help='Enable original time services with the documented deadline clock patch')
 parser.add_argument('--intro-race-fix', action='store_true', help='Opt in to the documented MMUI intro completion race patch')
 parser.add_argument('--time-services', action='store_true', help='Probe the original CPP and BLM time services')
@@ -53,6 +54,8 @@ parser.add_argument('--verify-gpio', action='store_true', help='Check GPIO edge 
 parser.add_argument('--probe-lvds', action='store_true', help='Trace the stock display service with a real VirtIO framebuffer')
 parser.add_argument('--seconds', type=int, default=45)
 args = parser.parse_args()
+if args.websockets_queue_fix and (not args.opera or args.test_page):
+    parser.error('--websockets-queue-fix requires Opera and the original websocket code')
 if (args.time_deadline_fix or args.time_services) and (not args.opera or args.test_page or args.probe_websockets):
     parser.error('Time services require the original GUI')
 if args.intro_race_fix and (not args.opera or args.test_page or args.probe_websockets):
@@ -206,6 +209,8 @@ export COMMON_LOG_LEVEL=Debug
         commands = commands.replace('. /lab-software/start-services', 'export LAB_AUDIO_SERVICES=1\n. /lab-software/start-services')
     if args.intro_race_fix:
         commands = commands.replace('. /lab-software/start-services', 'export LAB_INTRO_RACE_FIX=1\n. /lab-software/start-services')
+    if args.websockets_queue_fix:
+        commands = commands.replace('. /lab-software/start-services', 'export LAB_WEBSOCKETS_QUEUE_FIX=1\n. /lab-software/start-services')
     if args.time_deadline_fix:
         commands = commands.replace('. /lab-software/start-services', 'export LAB_TIME_DEADLINE_FIX=1\n. /lab-software/start-services')
     if args.time_services:
@@ -257,7 +262,7 @@ finally:
 # QEMU has exited, so replay only this disposable output disk's journal before
 # inspecting it. Do not attempt general filesystem repairs on a failed run.
 subprocess.run(['e2fsck', '-p', '-E', 'journal_only', str(disk)], check=True)
-for name in ('time-deadline-fix.json', 'intro-race-fix.json', 'pattern.ppm', 'visible.ppm', 'buffer.ppm', 'compositor.log', 'compositor.core', 'opera.log', 'opera-strace.log', 'opera-samples.log', 'opera.core', 'syslog.log', 'syslog.log.0', 'nativegui.log', 'sm.log', 'smevents.txt', 'player.log', 'lvds.log', 'display.log', 'audio.log', 'audio-check.log', 'mic.wav', 'bluetooth.wav', 'vim.log', 'vip-trace.log', 'vip-service.log'):
+for name in ('websockets-queue-fix.json', 'time-deadline-fix.json', 'intro-race-fix.json', 'pattern.ppm', 'visible.ppm', 'buffer.ppm', 'compositor.log', 'compositor.core', 'opera.log', 'opera-strace.log', 'opera-samples.log', 'opera.core', 'syslog.log', 'syslog.log.0', 'nativegui.log', 'sm.log', 'smevents.txt', 'player.log', 'lvds.log', 'display.log', 'audio.log', 'audio-check.log', 'mic.wav', 'bluetooth.wav', 'vim.log', 'vip-trace.log', 'vip-service.log'):
     subprocess.run(['debugfs', '-R', f'dump /{name} {home / name}', str(disk)],
                    stdout=subprocess.PIPE, stderr=subprocess.STDOUT, check=True)
 if args.capture_sequence:

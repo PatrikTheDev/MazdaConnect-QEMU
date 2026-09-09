@@ -11,8 +11,9 @@ the Mazda rootfs using a pinned generic kernel. The software-rendering lab runs
 the original intro, disclaimer, home menu and Settings screen over VNC, with
 verified keyboard navigation. This currently requires llvmpipe and an explicit
 [documented intro race fix](docs/findings/0016-intro-race-fix.md). It is not a
-complete vehicle simulation; remaining service and websocket issues are under
-investigation. See [firmware findings](docs/findings/0002-eu-v74-analysis.md)
+complete vehicle simulation; further service integration remains under
+investigation. The optional queue fix below removes the observed websocket
+exceptions in the verified startup and Settings navigation sequence. See [firmware findings](docs/findings/0002-eu-v74-analysis.md)
 and [boot instructions](docs/guest.md).
 
 ## Start
@@ -130,3 +131,9 @@ clock domain. Both original time services now start, and the home screen display
 the guest time; the full boot and minute callback have been verified.
 See [the time-service findings](docs/findings/0017-time-deadline-fix.md) for
 scope, hashes and diagnostic recipes.
+
+The approved [websocket queue correction](docs/findings/0018-websockets-queue-fix.md)
+is enabled with `--websockets-queue-fix`. Test it in the original browser with
+`just software-websockets-fix-test`. For original UI controls, use
+`just software-key backspace` for Back and `just software-key m` / `n` for
+clockwise / counterclockwise rotary input; Escape is not the UI Back control.

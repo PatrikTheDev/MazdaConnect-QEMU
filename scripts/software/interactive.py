@@ -19,6 +19,7 @@ def main():
     parser.add_argument('--seconds', type=int, help='Stop after this many seconds; useful for reproducible diagnostics')
     parser.add_argument('--test-page', action='store_true', help='Show the controlled browser color/text page')
     parser.add_argument('--renderer', choices=('softpipe', 'llvmpipe'), default='softpipe')
+    parser.add_argument('--websockets-queue-fix', action='store_true', help='Apply the documented opt-in original GUI queue correction')
     parser.add_argument('--time-deadline-fix', action='store_true', help='Enable original time services with the documented deadline clock patch')
     parser.add_argument('--intro-race-fix', action='store_true', help='Apply the documented opt-in MMUI intro race patch')
     parser.add_argument('--start-delay', type=int, default=5, help='Time to connect a VNC client before starting services')
@@ -27,6 +28,8 @@ def main():
     parser.add_argument('--microphone-tone', type=int, default=0, help='Simulated microphone frequency, 0 for silence')
     parser.add_argument('--record-audio', action='store_true', help='Record speaker PCM alongside live diagnostics')
     args = parser.parse_args()
+    if args.websockets_queue_fix and args.test_page:
+        parser.error('--websockets-queue-fix requires the original GUI')
     if args.time_deadline_fix and args.test_page:
         parser.error('--time-deadline-fix requires the original GUI')
     if args.intro_race_fix and args.test_page:
@@ -76,6 +79,7 @@ def main():
 mount -t ext4 $(/bin/busybox findfs LABEL=MAZDA_SOFTWARE) /tmp/software
 export LAB_LOG_DIR=/tmp/software
 export LAB_GALLIUM_DRIVER={args.renderer}
+export LAB_WEBSOCKETS_QUEUE_FIX={int(args.websockets_queue_fix)}
 export LAB_TIME_DEADLINE_FIX={int(args.time_deadline_fix)}
 export LAB_INTRO_RACE_FIX={int(args.intro_race_fix)}
 chmod 700 /tmp/lab-wayland
@@ -140,7 +144,7 @@ echo SOFTWARE_LIVE_STARTED
         if audio:
             audio.close()
         subprocess.run(['e2fsck', '-p', '-E', 'journal_only', str(disk)], check=True)
-        for name in ('time-deadline-fix.json', 'intro-race-fix.json', 'compositor.log', 'opera.log', 'sm.log', 'syslog.log', 'smevents.txt', 'nativegui.log', 'frame.ppm', 'vip-service.log', 'vim.log', 'audio-config.log', 'display.log'):
+        for name in ('websockets-queue-fix.json', 'time-deadline-fix.json', 'intro-race-fix.json', 'compositor.log', 'opera.log', 'sm.log', 'syslog.log', 'smevents.txt', 'nativegui.log', 'frame.ppm', 'vip-service.log', 'vim.log', 'audio-config.log', 'display.log'):
             subprocess.run(['debugfs', '-R', f'dump /{name} {home / name}', str(disk)],
                            stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL, check=True)
             if (home / name).exists() and name.endswith('.log'):

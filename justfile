@@ -42,6 +42,7 @@ software-status:
 software-capture:
     docker compose -f compose.software.yaml run --rm lab python3 scripts/software/control.py capture
 
+# Original UI: backspace = Back, m/n = rotary clockwise/counterclockwise.
 software-key key:
     docker compose -f compose.software.yaml run --rm lab python3 scripts/software/control.py key "$1"
 
@@ -114,6 +115,13 @@ software-startup-report run:
 
 software-websockets-probe:
     just software-opera-test --renderer llvmpipe --probe-websockets --inspect-surface --seconds 20
+
+# Run queue delivery cases in the firmware's own Opera runtime.
+software-websockets-fix-test:
+    just software-opera-test --renderer llvmpipe --probe-websockets --websockets-queue-fix --inspect-surface --seconds 20
+
+software-websockets-fix-probe *args:
+    just software-time-fix-probe --websockets-queue-fix "$@"
 
 software-intro-fix-test:
     docker compose -f compose.software.yaml run --rm lab python3 scripts/software/check_intro_fix.py
