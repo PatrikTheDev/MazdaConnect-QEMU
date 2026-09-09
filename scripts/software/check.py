@@ -19,6 +19,7 @@ from audio_backend import AudioBackend
 
 parser = argparse.ArgumentParser(description=__doc__)
 parser.add_argument('--opera', action='store_true')
+parser.add_argument('--renderer', choices=('softpipe', 'llvmpipe'), default='softpipe')
 parser.add_argument('--live-output', action='store_true', help='Exercise the real VNC framebuffer in the bounded diagnostic')
 parser.add_argument('--trace-render', action='store_true', help='Trace Opera waits and software compositor frame stages')
 parser.add_argument('--sample-render', action='store_true', help='Sample Opera main-thread registers during startup')
@@ -125,6 +126,7 @@ sync
 poweroff -f
 '''
 if args.opera:
+    commands = commands.replace('export XDG_RUNTIME_DIR=', f'export LAB_GALLIUM_DRIVER={args.renderer}\nexport XDG_RUNTIME_DIR=')
     if args.probe_lvds or args.verify_display or args.live_output:
         commands = commands.replace('export MAZDA_SOFTWARE_FRAME=', 'export MAZDA_SOFTWARE_FB=/dev/fb0\nexport MAZDA_SOFTWARE_FRAME=')
     if args.trace_render or args.sample_render:

@@ -1,8 +1,10 @@
 # Extended browser rendering stall
 
-The home screen can render after the original audio services reach STARTED and
-the system enters NormalState, but extended live startup terminates Opera via
-its own `OnHeartbeatMissed` watchdog. The watchdog has not been bypassed.
+The original audio services reach STARTED and the system enters NormalState,
+but extended live startup with softpipe terminates Opera via its own
+`OnHeartbeatMissed` watchdog. The watchdog has not been bypassed. The earlier
+five-icon image does not establish that the interactive home screen rendered:
+the intro contains that image, and the global texture capture includes video.
 
 Two opt-in recipes collect evidence:
 
@@ -29,3 +31,24 @@ option through 90 seconds of startup, retaining five-second frame samples.
 Its result must be checked for actual rendering and watchdog/liveness behavior
 before changing the normal live path. No alternative UI implementation or
 application-readiness reply has been substituted.
+
+## Renderer comparison
+
+The no-hardware-acceleration probe (`/software/test-eexqvvti`) still ended with
+the browser watchdog and a black framebuffer. With
+`just software-ui-probe --renderer llvmpipe` (`/software/test-6h0l0gd9`), Opera
+remained alive through 90 seconds without a missed heartbeat, but the framebuffer
+was still black. The renderer option uses the installed Mesa driver with one
+worker thread; softpipe remains the default.
+
+`just software-ui-probe --renderer llvmpipe --inspect-buffer --inspect-surface --seconds 45`
+(`/software/test-igi1tjqs`) also remained black when the diagnostic explicitly
+set browser surface alpha to 255. Its uploaded-buffer image contains the five
+icons, but cannot be attributed to Opera rather than the intro player.
+
+The original GUI logs report `TypeError: 'this._isStack' is not a function` in
+`jci/gui/framework/js/Websockets.js`. MMUI remains in `system.IntroAnimation`
+even after `UIA_SYSTEM_OnFinishIntroAnimation` receives video completion and
+reports HMI ready. These are unresolved leads; neither the stock JavaScript nor
+the readiness transitions have been patched. Interactive UI rendering remains
+unverified.
