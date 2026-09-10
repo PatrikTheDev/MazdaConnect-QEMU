@@ -177,14 +177,17 @@ static void save_pixels(const char *path, const uint32_t *pixels) {
     if (!file) { perror("software frame"); free(temporary); return; }
     int complete=1;
     fprintf(file,"P6\n%d %d\n255\n",WIDTH,HEIGHT);
-    unsigned char row[WIDTH*3];
+    unsigned char *rgb = malloc(WIDTH*HEIGHT*3);
+    if (!rgb) { fclose(file); remove(temporary); free(temporary); return; }
     for (int y=0; y<HEIGHT; ++y) {
         for (int x=0; x<WIDTH; ++x) {
             uint32_t c=pixels[y*WIDTH+x];
-            row[x*3]=c>>16; row[x*3+1]=c>>8; row[x*3+2]=c;
+            size_t offset = ((size_t)y*WIDTH+x)*3;
+            rgb[offset]=c>>16; rgb[offset+1]=c>>8; rgb[offset+2]=c;
         }
-        if (fwrite(row,1,sizeof(row),file)!=sizeof(row)) { perror("software frame write"); complete=0; break; }
     }
+    if (fwrite(rgb,1,WIDTH*HEIGHT*3,file)!=WIDTH*HEIGHT*3) { perror("software frame write"); complete=0; }
+    free(rgb);
     if (fclose(file)) complete=0;
     /* Readers must never capture a partially written frame. */
     if (complete && rename(temporary,path)) perror("software frame rename");

@@ -26,6 +26,7 @@ parser.add_argument('--time-services', action='store_true', help='Probe the orig
 parser.add_argument('--renderer', choices=('softpipe', 'llvmpipe'), default='softpipe')
 parser.add_argument('--browser-delay', type=int, default=5, help='Seconds between service launch and Opera launch for startup-order diagnostics')
 parser.add_argument('--live-output', action='store_true', help='Exercise the real VNC framebuffer in the bounded diagnostic')
+parser.add_argument('--profile-frames', action='store_true', help='Time compositor stages without attaching to Opera')
 parser.add_argument('--trace-render', action='store_true', help='Trace Opera waits and software compositor frame stages')
 parser.add_argument('--sample-render', action='store_true', help='Sample Opera main-thread registers during startup')
 parser.add_argument('--inspect-surface', action='store_true', help='After the normal capture, explicitly show the browser surface for a separate diagnostic capture')
@@ -72,7 +73,7 @@ if not 0 <= args.browser_delay <= 30:
     parser.error('--browser-delay must be between 0 and 30')
 if not 5 <= args.seconds <= 180:
     parser.error('--seconds must be between 5 and 180')
-if (args.live_output or args.trace_render or args.sample_render) and not args.opera:
+if (args.live_output or args.trace_render or args.sample_render or args.profile_frames) and not args.opera:
     parser.error('Live output and render tracing require --opera')
 if args.trace_render and args.sample_render:
     parser.error('Syscall tracing and register sampling cannot attach to the same process')
@@ -151,7 +152,7 @@ if args.opera:
     commands = commands.replace('export XDG_RUNTIME_DIR=', f'export LAB_GALLIUM_DRIVER={args.renderer}\nexport XDG_RUNTIME_DIR=')
     if args.probe_lvds or args.verify_display or args.live_output:
         commands = commands.replace('export MAZDA_SOFTWARE_FRAME=', 'export MAZDA_SOFTWARE_FB=/dev/fb0\nexport MAZDA_SOFTWARE_FRAME=')
-    if args.trace_render or args.sample_render:
+    if args.trace_render or args.sample_render or args.profile_frames:
         commands = commands.replace('export MAZDA_SOFTWARE_FRAME=', 'export MAZDA_RENDER_TRACE=1\nexport MAZDA_SOFTWARE_FRAME=')
     if args.inspect_buffer:
         commands = commands.replace('export MAZDA_SOFTWARE_FRAME=', 'export MAZDA_SOFTWARE_BUFFER=/tmp/software/buffer.ppm\nexport MAZDA_SOFTWARE_FRAME=')

@@ -117,6 +117,12 @@ software-health-report run *args:
 software-startup-report run:
     docker compose -f compose.software.yaml run --rm lab python3 scripts/software/startup_report.py "$@"
 
+software-frame-profile *args:
+    just software-websockets-fix-probe --profile-frames "$@"
+
+software-frame-report run:
+    docker compose -f compose.software.yaml run --rm lab python3 scripts/software/frame_report.py "$@"
+
 software-transition-trace *args:
     just software-websockets-fix-probe --trace-transitions "$@"
 
