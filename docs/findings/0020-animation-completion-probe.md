@@ -88,3 +88,50 @@ successive gaps of 630.8ms and 617.7ms respectively. These whole-run gaps includ
 idle intervals and are **not** a rendering-rate benchmark or proof of compositor
 latency. Profiling active transitions is still needed before changing rendering
 or timeout behavior. `just test` passed for the trace integration.
+
+## Animation identity and start events
+
+The expanded trace includes `animationName` and `elapsedTime` in original
+manager callbacks. A capture listener additionally logs stock
+`transitions_keyframes_*` start/end events without changing or cancelling them.
+It does not read computed styles before the watchdog. Logging can still affect
+scheduling. Use `just software-transition-report /software/<run>` to print
+the manifest and event timeline, including a retained rotated syslog if present.
+
+The intermediate run `/software/test-707zmq2y` established that the late
+`Dialog3Tmplt1` event was `transitions_keyframes_fadeOut` (0.3 seconds), not
+completion of its incoming fade-in. It arrived during the subsequent transition
+to HomeScreen. Both incoming templates remained at opacity zero at their
+watchdogs. In this run the background animations were also incomplete at the
+first watchdog (opacity 0.32/0.68), unlike the earlier run, so the background
+timing is variable rather than an invariant success.
+
+That intermediate build used an incorrect uppercase document-event filter;
+only the original manager callbacks provided event evidence. The filter now
+matches the lowercase names in original `TransitionsGen.css`. This limitation
+does not affect the recorded manager event names.
+
+The corrected run `/software/test-y7y19r8y` has traced SHA-256
+`721572130055dd19272ea97c1e6ae5119717de4330bf8db5a5f6c97ecfeea744`.
+Its document listener records:
+
+| Target | Cleanup listener registered | Watchdog logged | Fade-in start event delivered |
+| --- | --- | --- | --- |
+| Dialog3Tmplt1 | 00:21:59.784 | 00:22:02.168 | 00:22:03.656 |
+| MainMenuTmplt1 | 00:22:05.893 | 00:22:08.089 | 00:22:10.257 |
+
+Both targets were at opacity zero when the watchdog inspected them. The late
+Disclaimer completion event again belongs to its subsequent fade-out. These
+are event-delivery timestamps, not proof of when Opera internally started an
+animation. Watchdog cleanup had already changed classes before the observed
+start callbacks, so the trace cannot establish that an untouched fade-in would
+eventually finish. It does establish that an absent end listener alone cannot
+explain the observed zero opacity and late start notifications.
+
+The original home screen rendered at 00:22. `just test` passed. Next isolate
+the original lifecycle (transparent initial class, reparenting, then delayed
+fade-in) without an early computed-style read. The earlier capability probe
+used an already-attached element and sampled computed style immediately, so it
+does not exclude an Opera issue specific to that lifecycle. Rendering and event
+scheduling delays remain alternative explanations; no timeout or animation
+behavior change is authorized or implemented by this diagnostic.

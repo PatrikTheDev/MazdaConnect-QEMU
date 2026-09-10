@@ -15,9 +15,9 @@ def build(home):
         'Transitions.prototype._setCleanupByEventListener = function(domElement) {':
             'log.info("LAB_TRANSITION listen " + domElement.id + " classes=" + domElement.className);',
         'Transitions.prototype._animationEndEventCallback = function(evt) {':
-            'log.info("LAB_TRANSITION template event " + evt.type + " target=" + evt.target.id);',
+            'log.info("LAB_TRANSITION template event " + evt.type + " target=" + evt.target.id + " name=" + evt.animationName + " elapsed=" + evt.elapsedTime);',
         'Transitions.prototype._animateGlobalCtrlComplete = function(evt) {':
-            'log.info("LAB_TRANSITION global event " + evt.type + " target=" + evt.target.id);',
+            'log.info("LAB_TRANSITION global event " + evt.type + " target=" + evt.target.id + " name=" + evt.animationName + " elapsed=" + evt.elapsedTime);',
         'Transitions.prototype._watchdogTimerCallback = function() {':
             'this._labTracePending();',
     }

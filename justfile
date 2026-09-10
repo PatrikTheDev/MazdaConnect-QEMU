@@ -126,6 +126,9 @@ software-frame-report run:
 software-transition-trace *args:
     just software-websockets-fix-probe --trace-transitions "$@"
 
+software-transition-report run:
+    docker compose -f compose.software.yaml run --rm lab python3 scripts/software/transition_report.py "$@"
+
 software-animations-probe:
     just software-opera-test --renderer llvmpipe --probe-animations --inspect-surface --seconds 20
 

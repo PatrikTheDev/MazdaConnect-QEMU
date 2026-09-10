@@ -1,4 +1,14 @@
 
+// Observe start/end independently of the manager's cleanup listeners. Do not
+// read styles, cancel events, or modify the target's animation state here.
+['animationstart', 'animationend'].forEach(function(type) {
+    document.addEventListener(type, function(evt) {
+        if (String(evt.animationName).indexOf('transitions_keyframes_') !== 0) return;
+        log.info('LAB_TRANSITION document event ' + evt.type + ' target=' + evt.target.id +
+                 ' name=' + evt.animationName + ' elapsed=' + evt.elapsedTime);
+    }, true);
+});
+
 // Read computed styles only after the original watchdog has already fired.
 Transitions.prototype._labTracePending = function() {
     for (var key in this._animationTargetDescriptions) {
