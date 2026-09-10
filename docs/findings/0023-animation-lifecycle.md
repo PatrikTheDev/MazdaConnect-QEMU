@@ -39,3 +39,24 @@ contents, ancestors, overlapping transitions or rendering load. Cases execute
 in a fixed order, so their timing differences are not a controlled performance
 comparison. Full-UI scheduling and painting remain under investigation; no
 firmware timeout or animation behavior has been changed.
+
+## Full-UI painter comparison
+
+`just software-transition-trace --no-hw-accel --seconds 90` retains the same
+llvmpipe configuration and approved startup fixes while passing Opera's
+`--noHWAccel` option. The guest command line in `/software/test-ih03phk3`
+confirms the option was passed. The home screen rendered with 00:28; selected
+services reached STARTED, with no JavaScript exceptions, heartbeat misses or
+database semaphore errors. Both animation watchdogs remained. Incoming
+Disclaimer and HomeScreen start notifications again arrived after cleanup.
+This option alone does not resolve the problem. It is not a measured proof
+that every internal painting operation switched backend.
+
+Read-only ABI inspection additionally confirmed that `wlxs_output_post_frames`
+at 0x14924 calls through the original surface traversal to
+`wlxs_surface_post_frame` at 0x19f68, which calls `wlxs_timestamp` before posting
+the callback event. The plugin passes only the output pointer, as expected;
+there is no missing timestamp argument in that recovered declaration.
+`wlxs_timestamp` at 0x1ce58 reads `CLOCK_MONOTONIC` (clock ID 1) before converting
+the result to the protocol timestamp. This verifies the timestamp source, not
+the delay between generation and delivery to Opera.
