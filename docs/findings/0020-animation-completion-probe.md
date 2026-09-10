@@ -135,3 +135,7 @@ used an already-attached element and sampled computed style immediately, so it
 does not exclude an Opera issue specific to that lifecycle. Rendering and event
 scheduling delays remain alternative explanations; no timeout or animation
 behavior change is authorized or implemented by this diagnostic.
+
+The subsequent [isolated lifecycle probe](0023-animation-lifecycle.md) completed
+all four attachment/initial-class cases naturally before the deadline. That
+sequence alone does not reproduce the full-UI failure.

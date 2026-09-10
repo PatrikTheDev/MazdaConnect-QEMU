@@ -167,6 +167,7 @@ if args.opera:
     files.append(('lab-software/start-services', Path('overlays/software/start-services').read_bytes(), 0o755))
     files.append(('lab-software/render-test.html', Path('overlays/software/render-test.html').read_bytes(), 0o644))
     files.append(('lab-software/animations-probe.html', Path('overlays/software/animations-probe.html').read_bytes(), 0o644))
+    files.append(('lab-software/animation-lifecycle.html', Path('overlays/software/animation-lifecycle.html').read_bytes(), 0o644))
     files.append(('lab-software/websockets-probe.html', Path('overlays/software/websockets-probe.html').read_bytes(), 0o644))
 with target.open('ab') as raw, gzip.GzipFile(fileobj=raw, mode='wb', mtime=0) as out:
     for inode, name in enumerate(directories, 1):

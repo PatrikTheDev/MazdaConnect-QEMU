@@ -1,0 +1,68 @@
+<!doctype html>
+<meta charset="utf-8">
+<title>Original Opera template lifecycle probe</title>
+<link rel="stylesheet" href="file:///jci/gui/common/transitions/css/TransitionsGen.css">
+<style>
+body {background:#16324f;color:white;font:15px monospace}
+#stage {position:absolute;top:390px;width:700px;height:70px}
+.box {position:absolute;width:60px;height:60px;background:red}
+</style>
+<h3>Original Opera template lifecycle probe</h3>
+<pre id="output">Running four sequential cases; no early computed-style reads.</pre>
+<div id="stage"></div>
+<script>var log={addSrcFile:function(){},debug:function(){},info:function(){},warn:function(){},error:function(){}};</script>
+<script src="file:///jci/gui/common/transitions/js/Transitions.js"></script>
+<script>
+(function() {
+    var stage=document.getElementById('stage'), results=[], index=0;
+    var cases=[
+        {name:'attached', init:false, reparent:false},
+        {name:'attached+init', init:true, reparent:false},
+        {name:'detached+init', init:true, reparent:true},
+        {name:'detached-no-init', init:false, reparent:true}
+    ];
+    function next() {
+        if (index === cases.length) {
+            document.getElementById('output').textContent=results.join('\n')+'\ndone=true';
+            return;
+        }
+        var item=cases[index++], target=document.createElement('div');
+        target.id='case'+index;
+        target.className='box';
+        // Detached parent models a template constructed in the framework bubble.
+        var bubble=document.createElement('div');
+        (item.reparent ? bubble : stage).appendChild(target);
+        var manager=Object.create(Transitions.prototype), events=[], complete=false;
+        manager._TRANSITION_ELEMENT_PREFIX='transitionElement_';
+        manager._animationTargetDescriptions={};
+        manager._animationEndEventCallbackBound=manager._animationEndEventCallback.bind(manager);
+        manager._watchdogTimerId=null;
+        manager._transitionCompleted=function(){complete=true;};
+        setTimeout(function() {
+            var started=Date.now();
+            ['animationstart','animationend'].forEach(function(type) {
+                target.addEventListener(type,function(evt) {
+                    events.push(evt.type+'@'+(Date.now()-started)+'ms');
+                });
+            });
+            if (item.init) target.classList.add('Transitions_Init_CenterTransparent');
+            if (item.reparent) stage.appendChild(target);
+            target.classList.add('Transitions_fadeIn_300_300');
+            manager._setCleanupByEventListener(target);
+            // Observe the original 600ms duration + 500ms margin without forcing
+            // completion: a later natural event remains observable in this probe.
+            setTimeout(function() {
+                events.push('deadline@'+(Date.now()-started)+'ms complete='+complete);
+            },1100);
+            setTimeout(function() {
+                // The first style read is after the entire observation window.
+                results.push(item.name+' opacity='+getComputedStyle(target).opacity+' complete='+complete);
+                results.push('  '+events.join(' '));
+                stage.removeChild(target);
+                next();
+            },3000);
+        },500);
+    }
+    next();
+}());
+</script>

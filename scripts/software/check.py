@@ -34,6 +34,7 @@ parser.add_argument('--inspect-surface', action='store_true', help='After the no
 parser.add_argument('--test-page', action='store_true')
 parser.add_argument('--trace-transitions', action='store_true', help='Log original UI animation callbacks and pending targets without changing timing rules')
 parser.add_argument('--probe-animations', action='store_true', help='Probe CSS animation support in original Opera without modifying firmware')
+parser.add_argument('--animation-lifecycle', action='store_true', help='Use the isolated template attachment diagnostic with --probe-animations')
 parser.add_argument('--probe-websockets', action='store_true', help='Run an isolated diagnostic against the stock websocket JavaScript in original Opera')
 parser.add_argument('--no-hw-accel', action='store_true', help='Use Opera CPU painting instead of its GLES painter; both use CPU Mesa')
 parser.add_argument('--tau-state', choices=('standby', 'connected', 'disconnected'), default='connected')
@@ -58,6 +59,8 @@ parser.add_argument('--verify-gpio', action='store_true', help='Check GPIO edge 
 parser.add_argument('--probe-lvds', action='store_true', help='Trace the stock display service with a real VirtIO framebuffer')
 parser.add_argument('--seconds', type=int, default=45)
 args = parser.parse_args()
+if args.animation_lifecycle and not args.probe_animations:
+    parser.error('--animation-lifecycle requires --probe-animations')
 if args.verify_mic_gain and not (args.verify_audio and args.probe_audio and args.audio_devices):
     parser.error('--verify-mic-gain requires --verify-audio --probe-audio --audio-devices')
 if args.trace_transitions and (not args.opera or args.test_page or args.probe_websockets or args.probe_animations):
@@ -194,7 +197,8 @@ kill $lab_opera_pid
     if args.test_page:
         commands = commands.replace('-u /jci/gui/index.html', '-u /lab-software/render-test.html')
     if args.probe_animations:
-        commands = commands.replace('-u /jci/gui/index.html', '-u /lab-software/animations-probe.html')
+        page = 'animation-lifecycle.html' if args.animation_lifecycle else 'animations-probe.html'
+        commands = commands.replace('-u /jci/gui/index.html', '-u /lab-software/' + page)
     if args.probe_websockets:
         commands = commands.replace('-u /jci/gui/index.html', '-u /lab-software/websockets-probe.html')
     if args.no_hw_accel:

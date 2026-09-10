@@ -132,6 +132,9 @@ software-transition-report run:
 software-animations-probe:
     just software-opera-test --renderer llvmpipe --probe-animations --inspect-surface --seconds 20
 
+software-animation-lifecycle-probe:
+    just software-opera-test --renderer llvmpipe --probe-animations --animation-lifecycle --inspect-surface --seconds 25
+
 software-websockets-probe:
     just software-opera-test --renderer llvmpipe --probe-websockets --inspect-surface --seconds 20
 
