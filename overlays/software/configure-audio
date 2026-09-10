@@ -13,5 +13,7 @@ ln -sf /tmp/mazda-asound.conf /data/asound.conf
 # software mixer controls continue applying per-source policy and volume.
 for lab_card in 0 1; do
     /usr/bin/amixer -c "$lab_card" sset Master 100% unmute
-    /usr/bin/amixer -c "$lab_card" sset Capture 100% cap
+    /usr/bin/amixer -c "$lab_card" sset Capture cap
 done
+/usr/bin/amixer -c 0 sset 'MIC Level' 100%
+/usr/bin/amixer -c 1 sset Capture 100%

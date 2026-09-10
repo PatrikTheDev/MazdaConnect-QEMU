@@ -116,6 +116,7 @@ if args.opera:
     files.append(('lab-software/load-input', script.encode(), 0o755))
     from build_audio import build as build_audio, alsa_adapter, service_config
     audio_module = build_audio(home, kernel['version'])
+    files.append(('lab-software/mazda_hda_mic.ko', audio_module.with_name('mazda_hda_mic.ko').read_bytes(), 0o644))
     available['snd_hda_intel'] = audio_module
     modules.clear()
     for name in ('snd_hda_codec_generic', 'snd_hda_intel', 'snd_aloop'):
@@ -126,7 +127,7 @@ if args.opera:
         options = {'snd_hda_intel': ' index=0,1 id=CMU,Bluetooth',
                    'snd_aloop': ' index=2,3,4 id=Loopback0,Loopback1,Loopback2 enable=1,1,1'}.get(name, '')
         audio_script += '/bin/busybox insmod /lab-software/' + source.name + options + '\n'
-    audio_script += 'sleep 2\ncat /proc/asound/cards\ncat /proc/asound/pcm\n'
+    audio_script += 'sleep 2\n/bin/busybox insmod /lab-software/mazda_hda_mic.ko\ncat /proc/asound/cards\ncat /proc/asound/pcm\n'
     files.append(('lab-software/load-audio', audio_script.encode(), 0o755))
     files.append(('lab-software/audio-check', Path('overlays/software/audio-check').read_bytes(), 0o755))
     files.append(('lab-software/configure-audio', Path('overlays/software/configure-audio').read_bytes(), 0o755))

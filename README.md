@@ -142,3 +142,8 @@ Use `just software-health-report /software/<retained-run>` to inspect observed
 service states and frequent errors. The software launcher supplies the POSIX
 shared-memory mount required by the original vehicle database; see
 [validation and remaining issues](docs/findings/0019-posix-shared-memory.md).
+
+Original settings can adjust HDA microphone capture gain through `MIC Level`.
+Run `just software-mic-gain-test` to verify actual captured audio at full and
+half control settings. See the [gain mapping and calibration limitation](docs/findings/0022-hda-microphone-gain.md)
+before interpreting HDA's reported dB values.

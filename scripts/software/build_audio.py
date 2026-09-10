@@ -55,8 +55,9 @@ def build(home, version):
     source = Path('/opt/guest-audio-source')
     for name in ('hda_intel.c', 'hda_intel.h', 'hda_controller.h', 'hda_intel_trace.h'):
         shutil.copyfile(source / name, target / name)
+    shutil.copyfile('src/software/hda-mic-control.c', target / 'mazda_hda_mic.c')
     (target / 'Makefile').write_text(
-        'obj-m := snd-hda-intel.o\n'
+        'obj-m := snd-hda-intel.o mazda_hda_mic.o\n'
         'snd-hda-intel-y := hda_intel.o\n'
         'CFLAGS_hda_intel.o := -I$(src)\n')
     subprocess.run(['make', '-C', '/usr/src/linux-headers-' + version,

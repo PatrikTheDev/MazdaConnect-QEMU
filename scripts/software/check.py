@@ -26,6 +26,7 @@ parser.add_argument('--time-services', action='store_true', help='Probe the orig
 parser.add_argument('--renderer', choices=('softpipe', 'llvmpipe'), default='softpipe')
 parser.add_argument('--browser-delay', type=int, default=5, help='Seconds between service launch and Opera launch for startup-order diagnostics')
 parser.add_argument('--live-output', action='store_true', help='Exercise the real VNC framebuffer in the bounded diagnostic')
+parser.add_argument('--verify-mic-gain', action='store_true', help='Verify real HDA capture attenuation through the Mazda MIC Level control')
 parser.add_argument('--profile-frames', action='store_true', help='Time compositor stages without attaching to Opera')
 parser.add_argument('--trace-render', action='store_true', help='Trace Opera waits and software compositor frame stages')
 parser.add_argument('--sample-render', action='store_true', help='Sample Opera main-thread registers during startup')
@@ -57,6 +58,8 @@ parser.add_argument('--verify-gpio', action='store_true', help='Check GPIO edge 
 parser.add_argument('--probe-lvds', action='store_true', help='Trace the stock display service with a real VirtIO framebuffer')
 parser.add_argument('--seconds', type=int, default=45)
 args = parser.parse_args()
+if args.verify_mic_gain and not (args.verify_audio and args.probe_audio and args.audio_devices):
+    parser.error('--verify-mic-gain requires --verify-audio --probe-audio --audio-devices')
 if args.trace_transitions and (not args.opera or args.test_page or args.probe_websockets or args.probe_animations):
     parser.error('--trace-transitions requires the original GUI')
 if args.probe_animations and (not args.opera or args.test_page or args.probe_websockets):
@@ -228,6 +231,8 @@ export COMMON_LOG_LEVEL=Debug
         commands = commands.replace('. /lab-software/start-services', 'export LAB_TIME_SERVICES=1\n. /lab-software/start-services')
     if args.probe_vim:
         commands = commands.replace('echo /tmp/software/opera.core', '/lab-software/vip-trace > /tmp/software/vip-trace.log 2>&1 &\n/bin/busybox timeout -t 8 /lab-modules/trace-driver /jci/vim/vim_app > /tmp/software/vim.log 2>&1\necho VIM_PROBE_RC=$?\necho /tmp/software/opera.core')
+    if args.verify_mic_gain:
+        commands = commands.replace('. /lab-software/start-services', 'export LAB_VERIFY_MIC_GAIN=1\n. /lab-software/start-services')
     if args.probe_audio:
         commands = commands.replace('echo /tmp/software/opera.core', '/bin/sh /jci/am/audioconfigupdate.sh > /tmp/software/audio.log 2>&1\n/bin/busybox timeout -t 8 /lab-modules/trace-driver /usr/bin/aopen -a >> /tmp/software/audio.log 2>&1\necho AUDIO_PROBE_RC=$?\necho /tmp/software/opera.core')
         if args.audio_devices:
@@ -273,7 +278,7 @@ finally:
 # QEMU has exited, so replay only this disposable output disk's journal before
 # inspecting it. Do not attempt general filesystem repairs on a failed run.
 subprocess.run(['e2fsck', '-p', '-E', 'journal_only', str(disk)], check=True)
-for name in ('transition-trace.json', 'websockets-queue-fix.json', 'time-deadline-fix.json', 'intro-race-fix.json', 'pattern.ppm', 'visible.ppm', 'buffer.ppm', 'compositor.log', 'compositor.core', 'opera.log', 'opera-strace.log', 'opera-samples.log', 'opera.core', 'syslog.log', 'syslog.log.0', 'nativegui.log', 'sm.log', 'smevents.txt', 'player.log', 'lvds.log', 'display.log', 'audio.log', 'audio-check.log', 'mic.wav', 'bluetooth.wav', 'vim.log', 'vip-trace.log', 'vip-service.log'):
+for name in ('transition-trace.json', 'websockets-queue-fix.json', 'time-deadline-fix.json', 'intro-race-fix.json', 'pattern.ppm', 'visible.ppm', 'buffer.ppm', 'compositor.log', 'compositor.core', 'opera.log', 'opera-strace.log', 'opera-samples.log', 'opera.core', 'syslog.log', 'syslog.log.0', 'nativegui.log', 'sm.log', 'smevents.txt', 'player.log', 'lvds.log', 'display.log', 'audio.log', 'audio-check.log', 'mic.wav', 'mic-half.wav', 'bluetooth.wav', 'vim.log', 'vip-trace.log', 'vip-service.log'):
     subprocess.run(['debugfs', '-R', f'dump /{name} {home / name}', str(disk)],
                    stdout=subprocess.PIPE, stderr=subprocess.STDOUT, check=True)
 if args.capture_sequence:
@@ -341,6 +346,9 @@ if args.opera:
         verify(home / 'audio0.wav', (1000, 2000))
         verify(home / 'mic.wav', (args.microphone_tone, args.microphone_tone))
         verify(home / 'bluetooth.wav', (args.microphone_tone,))
+        if args.verify_mic_gain:
+            from check_mic_gain import verify_gain
+            verify_gain(home, diagnostic)
         if process.returncode or not any('Power down' in line for line in lines):
             raise SystemExit('Guest did not shut down cleanly')
         print('Original ALSA playback, microphone and Bluetooth PCM transfers verified; audio-service startup remains separate.')
