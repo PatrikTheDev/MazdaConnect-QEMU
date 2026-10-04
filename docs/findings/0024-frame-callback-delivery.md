@@ -101,3 +101,50 @@ they support investigating browser rendering/submission next. They do not
 prove the exact wait dependency, which shader is costly, or that compositor
 optimizations cannot help. The timestamps are wall-clock observations and
 include diagnostic overhead; the report does not measure client dispatch.
+
+## Opt-in raster-worker instruction sampling
+
+```sh
+just software-worker-probe
+just software-thread-report /software/test-izfv4080 --first 25 --last 55
+just software-transition-report /software/test-izfv4080
+just software-health-report /software/test-izfv4080
+```
+
+The worker probe adds `--sample-workers` to the existing register sampler.
+After main-thread detach and a worker's stat read, it briefly attaches to each
+thread whose name starts with `llvmpipe-`, records PC/LR/SP and wall/monotonic
+time, and captures the mapping containing that PC while stopped. It detaches
+before continuing. Default sampling still leaves workers running. The report
+prints file offsets for mapped files and mapping-relative offsets for anonymous
+memory, which are not interchangeable with ELF virtual addresses. Worker
+sampling adds scheduling perturbation; these observations are not a benchmark
+or an unwound call stack.
+
+The fresh run `test-izfv4080` retained all 70 main samples and 66 worker samples
+with matching PC mappings and no sampling errors. The original home screen
+was visually inspected at 15:20. Selected VBS, audio, settings, time, system,
+database and UI services reached STARTED; the known monitor assertion was
+absent in this run. That does not resolve its intermittent address-space risk.
+There were no JavaScript exceptions, heartbeat misses or database semaphore
+failures, but both animation watchdogs remained. The generic diagnostic exits
+1 to require inspection of pixels and logs; this is not an automatic success
+gate for complete UI startup.
+
+Disclaimer's listener was installed at 15:19:37.173 and its watchdog fired at
+15:19:39.169. Samples 33–36 (15:19:38.664 through 15:19:41.722) found the
+busy raster worker in anonymous executable mappings, while the main thread
+often waited in libc's futex syscall. HomeScreen began at 15:19:42.862 and
+its watchdog fired at 15:19:44.807. Samples 38 and 40 found the raster worker
+at file offset 0x8368 in the mounted runtime's `libm.so.6`; sample 32 was at
+0x3bad8. The library's executable PT_LOAD has matching file and virtual
+offsets, and its dynamic symbols identify these as `fesetenv+0x6c` and the
+entry to `floorf` (also aliased as `floorf32`). Samples 42 and 44 again found
+anonymous executable code. Anonymous mappings are consistent with generated
+raster code, but no specific shader or call dependency has yet been recovered.
+
+For samples 25–55 the worker accumulated 696 ticks, versus 253 for the main
+thread. After sample 45 it was mostly idle, with sampled PC in the futex wait.
+These data narrow investigation toward the software raster workload, including
+its generated code and floating-point environment operations. Two hits in
+`fesetenv` do not establish its total cost or justify bypassing it.

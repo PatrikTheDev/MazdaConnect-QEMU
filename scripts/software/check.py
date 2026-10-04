@@ -30,6 +30,7 @@ parser.add_argument('--verify-mic-gain', action='store_true', help='Verify real 
 parser.add_argument('--profile-frames', action='store_true', help='Time compositor stages without attaching to Opera')
 parser.add_argument('--trace-render', action='store_true', help='Trace Opera waits and software compositor frame stages')
 parser.add_argument('--sample-render', action='store_true', help='Sample Opera main-thread registers during startup')
+parser.add_argument('--sample-workers', action='store_true', help='With --sample-render, also briefly stop llvmpipe workers to record their PCs and current mappings')
 parser.add_argument('--inspect-surface', action='store_true', help='After the normal capture, explicitly show the browser surface for a separate diagnostic capture')
 parser.add_argument('--test-page', action='store_true')
 parser.add_argument('--trace-transitions', action='store_true', help='Log original UI animation callbacks and pending targets without changing timing rules')
@@ -59,6 +60,8 @@ parser.add_argument('--verify-gpio', action='store_true', help='Check GPIO edge 
 parser.add_argument('--probe-lvds', action='store_true', help='Trace the stock display service with a real VirtIO framebuffer')
 parser.add_argument('--seconds', type=int, default=45)
 args = parser.parse_args()
+if args.sample_workers and not args.sample_render:
+    parser.error('--sample-workers requires --sample-render')
 if args.animation_lifecycle and not args.probe_animations:
     parser.error('--animation-lifecycle requires --probe-animations')
 if args.verify_mic_gain and not (args.verify_audio and args.probe_audio and args.audio_devices):
@@ -206,7 +209,8 @@ kill $lab_opera_pid
     if args.trace_render:
         commands = commands.replace('/lab-software/run-opera ', '/usr/bin/strace -f -tt -T -e trace=poll,select,epoll_wait,futex,recvmsg,sendmsg -o /tmp/software/opera-strace.log /lab-software/run-opera ')
     if args.sample_render:
-        commands = commands.replace('lab_opera_pid=$!\n', 'lab_opera_pid=$!\n/lab-software/sample-process "$lab_opera_pid" > /tmp/software/opera-samples.log 2>&1 &\n')
+        worker_option = ' --workers' if args.sample_workers else ''
+        commands = commands.replace('lab_opera_pid=$!\n', 'lab_opera_pid=$!\n/lab-software/sample-process "$lab_opera_pid"' + worker_option + ' > /tmp/software/opera-samples.log 2>&1 &\n')
     commands = commands.replace('sleep 25\n', 'sleep ' + str(args.seconds) + '\n')
     if args.debug_services:
         commands = commands.replace('. /lab-software/start-services', '''mkdir -p /tmp/common/log

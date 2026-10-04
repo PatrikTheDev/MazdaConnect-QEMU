@@ -138,6 +138,9 @@ software-original-kernel-layout:
 software-transition-trace *args:
     just software-websockets-fix-probe --trace-transitions "$@"
 
+software-worker-probe *args:
+    just software-transition-trace --sample-render --sample-workers --seconds 90 "$@"
+
 software-transition-report run:
     docker compose -f compose.software.yaml run --rm lab python3 scripts/software/transition_report.py "$@"
 
