@@ -61,8 +61,19 @@ software-prepare:
 software-build:
     docker compose -f compose.software.yaml run --rm lab python3 scripts/software/task.py build
 
-software-test:
-    docker compose -f compose.software.yaml run --rm lab python3 scripts/software/task.py test
+software-test *args:
+    docker compose -f compose.software.yaml run --rm lab python3 scripts/software/task.py test "$@"
+
+# Exact color bars plus every-coordinate comparison with original Winston.
+software-draw-test *args:
+    just software-test --verify-draw "$@"
+
+# Original UI translation equivalence; intentionally retains diagnostic exit 1.
+software-draw-probe *args:
+    just software-websockets-fix-probe --kernel-profile vmsplit2g --verify-draw "$@"
+
+software-draw-position-test *args:
+    just software-opera-test --kernel-profile vmsplit2g --test-page --inspect-surface --renderer llvmpipe --probe-draw-positions --seconds 10 "$@"
 
 software-opera-test *args:
     docker compose -f compose.software.yaml run --rm lab python3 scripts/software/task.py opera "$@"

@@ -3,6 +3,7 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+#include <limits.h>
 #include <fcntl.h>
 #include <linux/fb.h>
 #include <linux/kd.h>
@@ -146,6 +147,15 @@ static void output_read(struct output *out, int x, int y, int w, int h, int stri
     for (int row=0; row<h; ++row)
         memcpy((char *)data+row*stride, owner(out)->frame+(y+row)*WIDTH+x, (size_t)w*4);
 }
+/* Recovered Winston ABI: custom-transform flag 52 and clip flag 32.
+ * With custom transforms disabled,
+ * update_transform installs an identity matrix plus an integer translation.
+ * Ask Winston for the origin, preserving its update/rounding side effects. */
+static int view_int(void *view, unsigned offset) {
+    int value;
+    memcpy(&value,(char *)view+offset,sizeof(value));
+    return value;
+}
 static void draw(struct output *out, void *view, int ox, int oy, void *surface) {
     struct buffer *b = *(struct buffer **)((char *)surface + 52);
     if (!b) return;
@@ -153,9 +163,36 @@ static void draw(struct output *out, void *view, int ox, int oy, void *surface) 
     unsigned opacity = *(unsigned *)((char *)view + 240);
     if (!opacity) return;
     struct software *sw = owner(out);
+    int bx=out->x, by=out->y;
+    int translated=!getenv("MAZDA_REFERENCE_DRAW") && !view_int(view,52) && !view_int(view,32);
+    if (translated) {
+        (void)wlxs_view_transform_to_local(view,&bx,&by);
+        /* Fall back rather than altering overflow behavior for extreme views. */
+        if ((int64_t)bx+WIDTH-1>INT_MAX || (int64_t)by+HEIGHT-1>INT_MAX ||
+            (int64_t)bx-ox<INT_MIN || (int64_t)bx+WIDTH-1-ox>INT_MAX ||
+            (int64_t)by-oy<INT_MIN || (int64_t)by+HEIGHT-1-oy>INT_MAX)
+            translated=0;
+    }
+    int verify=translated && getenv("MAZDA_VERIFY_DRAW");
     for (int y=0; y<HEIGHT; ++y) for (int x=0; x<WIDTH; ++x) {
-        int sx=x+out->x, sy=y+out->y;
-        if (!wlxs_view_transform_to_local(view, &sx, &sy)) continue;
+        int sx,sy,inside;
+        if (translated) {
+            sx=bx+x; sy=by+y;
+            inside=1;
+            if (verify) {
+                int rx=x+out->x, ry=y+out->y;
+                int expected=wlxs_view_transform_to_local(view,&rx,&ry);
+                if (inside!=expected || sx!=rx || sy!=ry) {
+                    fprintf(stderr,"SOFTWARE_DRAW_MISMATCH at %d,%d local %d,%d/%d reference %d,%d/%d\n",
+                            x,y,sx,sy,inside,rx,ry,expected);
+                    abort();
+                }
+            }
+        } else {
+            sx=x+out->x; sy=y+out->y;
+            inside=wlxs_view_transform_to_local(view,&sx,&sy);
+        }
+        if (!inside) continue;
         sx-=ox; sy-=oy;
         if (sx<0 || sy<0 || sx>=p->width || sy>=p->height) continue;
         uint32_t src=pixel(b,sx,sy), dst=sw->frame[y*WIDTH+x];
@@ -168,6 +205,8 @@ static void draw(struct output *out, void *view, int ox, int oy, void *surface) 
         }
         sw->frame[y*WIDTH+x]=result;
     }
+    if (verify) fprintf(stderr,"SOFTWARE_DRAW_VERIFIED pixels=%d offset=%d,%d\n",
+                        WIDTH*HEIGHT,bx,by);
 }
 static void save_pixels(const char *path, const uint32_t *pixels) {
     char *temporary=malloc(strlen(path)+5);

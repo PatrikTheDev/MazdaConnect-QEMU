@@ -28,6 +28,9 @@ parser.add_argument('--browser-delay', type=int, default=5, help='Seconds betwee
 parser.add_argument('--live-output', action='store_true', help='Exercise the real VNC framebuffer in the bounded diagnostic')
 parser.add_argument('--verify-mic-gain', action='store_true', help='Verify real HDA capture attenuation through the Mazda MIC Level control')
 parser.add_argument('--profile-frames', action='store_true', help='Time compositor stages without attaching to Opera')
+parser.add_argument('--verify-draw', action='store_true', help='Compare every translation fast-path coordinate with original Winston')
+parser.add_argument('--reference-draw', action='store_true', help='Use the original per-pixel transform calls for compositor cost comparison')
+parser.add_argument('--probe-draw-positions', action='store_true', help='Verify positive/negative stock IVI positions against shifted browser test-page pixels')
 parser.add_argument('--trace-render', action='store_true', help='Trace Opera waits and software compositor frame stages')
 parser.add_argument('--sample-render', action='store_true', help='Sample Opera main-thread registers during startup')
 parser.add_argument('--sample-workers', action='store_true', help='With --sample-render, also briefly stop llvmpipe workers to record their PCs and current mappings')
@@ -62,6 +65,10 @@ parser.add_argument('--verify-gpio', action='store_true', help='Check GPIO edge 
 parser.add_argument('--probe-lvds', action='store_true', help='Trace the stock display service with a real VirtIO framebuffer')
 parser.add_argument('--seconds', type=int, default=45)
 args = parser.parse_args()
+if args.verify_draw and args.reference_draw:
+    parser.error('--verify-draw and --reference-draw are mutually exclusive')
+if args.probe_draw_positions and not (args.opera and args.test_page and args.inspect_surface):
+    parser.error('--probe-draw-positions requires --test-page --inspect-surface')
 if args.sample_workers and not args.sample_render:
     parser.error('--sample-workers requires --sample-render')
 if args.probe_rounding and not args.opera:
@@ -167,6 +174,9 @@ cat /tmp/software/compositor.log
 sync
 poweroff -f
 '''
+if args.verify_draw or args.reference_draw:
+    name = 'MAZDA_VERIFY_DRAW' if args.verify_draw else 'MAZDA_REFERENCE_DRAW'
+    commands = commands.replace('export MAZDA_SOFTWARE_FRAME=', 'export '+name+'=1\nexport MAZDA_SOFTWARE_FRAME=')
 if args.opera:
     commands = commands.replace('export XDG_RUNTIME_DIR=', f'export LAB_GALLIUM_DRIVER={args.renderer}\nexport XDG_RUNTIME_DIR=')
     if args.probe_lvds or args.verify_display or args.live_output:
@@ -205,6 +215,13 @@ sleep 3
 cp /tmp/software/frame.ppm /tmp/software/visible.ppm
 kill $lab_opera_pid
 ''')
+    if args.probe_draw_positions:
+        positions=''
+        for label,x,y in (('positive',40,25),('negative',-30,-20)):
+            positions += (f'/bin/busybox timeout -t 5 /usr/bin/ivi-shell -p JCI_OPERA_PRIMARY:{x},{y}\n'
+                          f'echo DRAW_POSITION_{label}_RC=$?\nsleep 3\n'
+                          f'cp /tmp/software/frame.ppm /tmp/software/position-{label}.ppm\n')
+        commands=commands.replace('kill $lab_opera_pid\n',positions+'kill $lab_opera_pid\n')
     if args.verify_display:
         commands = commands.replace('cp /tmp/software/frame.ppm /tmp/software/visible.ppm', '/lab-software/runtime/ld-linux.so.3 --library-path /lab-software/runtime /lab-software/display-check\ncp /tmp/software/frame.ppm /tmp/software/visible.ppm')
     if args.test_page:
@@ -278,6 +295,9 @@ echo /tmp/software/opera.core''')
         commands = commands.replace('. /lab-software/start-services', 'export LAB_VENDOR_LVDS_PROBE=1\n. /lab-software/start-services')
         commands = commands.replace('sleep 5\necho /tmp/software/opera.core', '/bin/busybox timeout -t 5 /lab-modules/trace-driver /jci/lvds/lvds_service > /tmp/software/lvds.log 2>&1\necho LVDS_RC=$?\nsleep 5\necho /tmp/software/opera.core')
     commands = commands.replace('sleep 5\n', f'sleep {args.browser_delay}\n', 1)
+if args.verify_draw:
+    commands = commands.replace('kill $lab_compositor_pid\n',
+        'kill -0 $lab_compositor_pid; echo COMPOSITOR_ALIVE_RC=$?\nkill $lab_compositor_pid\n')
 try:
     deadline = time.monotonic() + args.seconds + 120
     while time.monotonic() < deadline:
@@ -313,6 +333,11 @@ subprocess.run(['e2fsck', '-p', '-E', 'journal_only', str(disk)], check=True)
 for name in ('transition-trace.json', 'websockets-queue-fix.json', 'time-deadline-fix.json', 'intro-race-fix.json', 'pattern.ppm', 'visible.ppm', 'buffer.ppm', 'compositor.log', 'compositor.core', 'opera.log', 'opera-strace.log', 'opera-samples.log', 'opera.core', 'syslog.log', 'syslog.log.0', 'nativegui.log', 'sm.log', 'smevents.txt', 'player.log', 'lvds.log', 'display.log', 'audio.log', 'audio-check.log', 'mic.wav', 'mic-half.wav', 'bluetooth.wav', 'vim.log', 'vip-trace.log', 'vip-service.log'):
     subprocess.run(['debugfs', '-R', f'dump /{name} {home / name}', str(disk)],
                    stdout=subprocess.PIPE, stderr=subprocess.STDOUT, check=True)
+if args.probe_draw_positions:
+    for label in ('positive','negative'):
+        name=f'position-{label}.ppm'
+        subprocess.run(['debugfs','-R',f'dump /{name} {home / name}',str(disk)],
+                       stdout=subprocess.PIPE,stderr=subprocess.STDOUT,check=True)
 if args.capture_sequence:
     for i in range(args.seconds // 5):
         name = f'sequence-{i:02d}.ppm'
@@ -359,6 +384,28 @@ for kind in ('visible', 'buffer'):
         png(source.read_bytes(), Path('artifacts/software-' + kind + '.png'))
 if args.verify_display and not any(line.startswith('DISPLAY_BEHAVIOR_OK:') for line in lines):
     raise SystemExit('Display behavior verification failed; inspect retained display.log and serial output')
+if args.verify_draw:
+    compositor_log=(home / 'compositor.log').read_text(errors='replace')
+    verified=compositor_log.count('SOFTWARE_DRAW_VERIFIED pixels=384000')
+    if (not verified or 'SOFTWARE_DRAW_MISMATCH' in compositor_log or
+            not any(line.strip() == 'COMPOSITOR_ALIVE_RC=0' for line in lines)):
+        raise SystemExit('Translation drawing verification failed; inspect retained compositor.log')
+    print(f'{verified} draws matched original Winston at every output coordinate; blending unchanged.')
+if args.probe_draw_positions:
+    base=(home / 'visible.ppm').read_bytes()[len(header):]
+    for label,dx,dy in (('positive',40,25),('negative',-30,-20)):
+        actual=(home / f'position-{label}.ppm').read_bytes()
+        expected=bytearray(800*480*3)
+        for y in range(480):
+            for x in range(800):
+                sx,sy=x-dx,y-dy
+                if 0<=sx<800 and 0<=sy<480:
+                    at=(y*800+x)*3; source=(sy*800+sx)*3
+                    expected[at:at+3]=base[source:source+3]
+        if (actual!=header+expected or
+                not any(line.strip()==f'DRAW_POSITION_{label}_RC=0' for line in lines)):
+            raise SystemExit(f'Stock IVI {label} position pixels differ from the requested translation; inspect retained position-{label}.ppm')
+    print('Positive and negative stock IVI positions produced exact translated browser pixels.')
 if args.opera and args.test_page and args.inspect_surface:
     pixels = (home / 'visible.ppm').read_bytes()[len(header):]
     def pixel(x, y):
