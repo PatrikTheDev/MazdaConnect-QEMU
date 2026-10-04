@@ -141,6 +141,9 @@ software-transition-trace *args:
 software-worker-probe *args:
     just software-transition-trace --sample-render --sample-workers --seconds 90 "$@"
 
+software-worker-code run sample tid:
+    docker compose -f compose.software.yaml run --rm lab python3 scripts/software/worker_code.py "$@"
+
 software-transition-report run:
     docker compose -f compose.software.yaml run --rm lab python3 scripts/software/transition_report.py "$@"
 

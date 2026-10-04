@@ -25,18 +25,31 @@ static int sample_worker(long tid, unsigned sample) {
     if (ok) {
         struct timespec wall,mono;
         if (!clock_gettime(CLOCK_REALTIME,&wall) && !clock_gettime(CLOCK_MONOTONIC,&mono))
-            printf("WORKER sample=%u tid=%ld wall=%ld.%09ld mono=%ld.%09ld pc=%08lx lr=%08lx sp=%08lx\n",
+            printf("WORKER sample=%u tid=%ld wall=%ld.%09ld mono=%ld.%09ld pc=%08lx lr=%08lx sp=%08lx cpsr=%08lx\n",
                    sample,tid,(long)wall.tv_sec,wall.tv_nsec,(long)mono.tv_sec,mono.tv_nsec,
-                   regs.uregs[15],regs.uregs[14],regs.uregs[13]);
+                   regs.uregs[15],regs.uregs[14],regs.uregs[13],regs.uregs[16]);
         char path[64],line[1024];
         snprintf(path,sizeof(path),"/proc/%ld/maps",tid);
         FILE *maps=fopen(path,"r");
         if (maps) {
             unsigned long first,last;
+            unsigned long code_first=0,code_last=0;
             while (fgets(line,sizeof(line),maps))
-                if (sscanf(line,"%lx-%lx",&first,&last)==2 && regs.uregs[15]>=first && regs.uregs[15]<last)
+                if (sscanf(line,"%lx-%lx",&first,&last)==2 && regs.uregs[15]>=first && regs.uregs[15]<last) {
                     printf("WORKER_MAP sample=%u tid=%ld %s",sample,tid,line);
+                    code_first=first; code_last=last;
+                }
             fclose(maps);
+            unsigned long start=regs.uregs[15]&~3UL;
+            if (start>=code_first+32) start-=32;
+            for (unsigned word=0; word<32 && start>=code_first && start+word*4+4<=code_last; ++word) {
+                unsigned long address=start+word*4;
+                errno=0;
+                long value=ptrace(PTRACE_PEEKDATA,tid,(void *)address,0);
+                if (errno) break;
+                printf("WORKER_CODE sample=%u tid=%ld address=%08lx value=%08lx\n",
+                       sample,tid,address,(unsigned long)value);
+            }
         }
     }
     int deliver=WSTOPSIG(status)==SIGSTOP ? 0 : WSTOPSIG(status);

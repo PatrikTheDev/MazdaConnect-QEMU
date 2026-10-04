@@ -19,7 +19,7 @@ for line in (args.run / 'opera-samples.log').read_text(errors='replace').splitli
     match = re.match(r'SAMPLE (\d+) .* r15=([0-9a-f]+)', line)
     if match:
         pcs[int(match[1])] = match[2]
-    match = re.fullmatch(r'WORKER sample=(\d+) tid=(\d+) wall=([\d.]+) mono=([\d.]+) pc=([0-9a-f]+) lr=([0-9a-f]+) sp=([0-9a-f]+)', line)
+    match = re.fullmatch(r'WORKER sample=(\d+) tid=(\d+) wall=([\d.]+) mono=([\d.]+) pc=([0-9a-f]+) lr=([0-9a-f]+) sp=([0-9a-f]+)(?: cpsr=[0-9a-f]+)?', line)
     if match:
         workers[int(match[1])].append((int(match[2]), match[3], match[4], match[5]))
     match = re.fullmatch(r'WORKER_MAP sample=(\d+) tid=(\d+) ([0-9a-f]+)-([0-9a-f]+) (\S+) ([0-9a-f]+) \S+ \d+\s*(.*)', line)
