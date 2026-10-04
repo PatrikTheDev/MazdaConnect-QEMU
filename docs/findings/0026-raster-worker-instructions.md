@@ -99,12 +99,60 @@ produced 0 and -2 rather than 1 and -1; toward-zero 1.5 and -1.5 produced
 2 and -2 rather than 1 and -1. No tested call raised FE_INEXACT.
 
 This exposes a rounding-mode compatibility limitation in the current
-ARMEL/QEMU runtime combination. The active raster rounding mode has not been
-measured, and the full-system behavior has not been checked with this probe.
-Consequently it does not establish visual corruption, the cause of animation
+ARMEL/QEMU runtime combination. This initial user-mode check did not measure
+the active raster rounding mode or full-system behavior; subsequent evidence
+is recorded below. It does not establish visual corruption, the cause of animation
 watchdogs, or whether the issue also occurs outside emulation. The diagnostic
 must retain its failing result rather than accepting the observed values.
 No math replacement, environment bypass or runtime-build adaptation has been
 introduced. `just test` passes independently; it does not cover this newly
 observed contract failure. Any adaptation needs a decision under the project
 instructions, and further investigation must preserve rounding semantics.
+
+## Full-system check and the observed raster rounding mode
+
+```sh
+just software-worker-rounding-probe
+just software-rounding-report /software/test-2rhdkvns
+just software-thread-report /software/test-2rhdkvns --first 31 --last 45
+```
+
+The full-system probe adds an independent `rounding-check` process after the
+existing service-startup script has mounted the modern runtime, and before
+Opera launch. It uses that runtime's loader/libm and retains `rounding.log`
+with `ROUNDING_RC`. The report preserves that exit status instead of masking
+a failing contract check. Normal boots do not execute this diagnostic.
+
+Worker sampling additionally reads `PTRACE_GETVFPREGS` while the worker is
+already stopped. The ARM UAPI contains 32 eight-byte VFP registers followed
+by four-byte FPSCR. The report decodes rounding bits 22–23 and flush-to-zero
+bit 24; the installed ARM libc header maps modes to 0, 0x400000, 0x800000
+and 0xc00000. This reads state without changing the floating-point environment.
+Default boots and samplers without worker opt-in are unaffected.
+
+The initial run `test-1qfn3p7a` placed the independent check before the normal
+runtime mount. It correctly retained `loader not found` and status 127, so
+it is not rounding-contract evidence. The ordering error was fixed rather
+than adding a second mount path. Its 66 worker FPSCR samples remain usable.
+
+The corrected run `test-2rhdkvns` executed the check successfully and reproduced
+the same five failures, with `ROUNDING_RC=1` and **7/12 passing checks**. Thus
+the limitation is present in the full guest, not only the user-mode diagnostic.
+The run retained 70 main samples and 65 worker FPSCR samples. Across both
+runs, all 131 FPSCR observations showed **round-to-nearest and flush-to-zero
+disabled**, including PCs in `feholdexcept`, `fesetenv`, the software arithmetic
+helpers and anonymous generated code. There were no sampler errors.
+
+This weakens the hypothesis that the non-nearest contract failure causes the
+observed startup watchdogs: the sampled workload uses the mode whose tested
+values pass. One-second samples cannot rule out transient mode changes or
+establish correctness for every possible rounding input. The cost of the
+observed calls remains a separate question; no rounding bypass is justified.
+
+The corrected run's original home screen was visually inspected at 15:46.
+Selected VBS/audio, system, settings, database, time and UI services reached
+STARTED, with no known monitor assertion, JavaScript exception, heartbeat miss
+or database semaphore failure. Both animation watchdogs remained, as did
+missing application-service subscriptions. This does not resolve the VBS
+address-space risk or prove the full project objective. `just test` passed
+independently of the intentionally failing rounding-contract report.

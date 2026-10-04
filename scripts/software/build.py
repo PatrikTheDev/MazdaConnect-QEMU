@@ -55,6 +55,11 @@ if args.opera:
     subprocess.run(['arm-linux-gnueabi-gcc', '-static', '-O2', '-Wall', '-Wextra', '-Werror',
                     'src/tools/sample-process.c', '-o', str(sampler)], check=True)
     files.append(('lab-software/sample-process', sampler.read_bytes(), 0o755))
+    rounding = home / 'rounding-check'
+    subprocess.run(['arm-linux-gnueabi-gcc','-O2','-Wall','-Wextra','-Werror',
+                    '-fno-builtin','-frounding-math','src/tools/rounding-check.c',
+                    '-o',str(rounding),'-lm'],check=True)
+    files.append(('lab-software/rounding-check',rounding.read_bytes(),0o755))
     for name in ('display-service', 'display-check'):
         binary = home / name
         subprocess.run(['arm-linux-gnueabi-gcc', '-O2', '-Wall', '-Wextra', '-Werror',

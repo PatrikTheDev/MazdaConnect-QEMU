@@ -1,8 +1,21 @@
 """Check nearbyintf in the exact modern ARMEL runtime under Cortex-A15 TCG."""
 from pathlib import Path
+import argparse
 import hashlib
+import re
 import subprocess
 import tempfile
+
+parser = argparse.ArgumentParser(description=__doc__)
+parser.add_argument('run',type=Path,nargs='?',help='Read the retained full-guest rounding log instead of executing a user-mode check')
+args = parser.parse_args()
+if args.run:
+    data = (args.run / 'rounding.log').read_text()
+    print(data,end='',flush=True)
+    status = re.findall(r'^ROUNDING_RC=(\d+)$',data,re.MULTILINE)
+    if len(status)!=1:
+        raise SystemExit('Missing or ambiguous full-guest rounding exit status')
+    raise SystemExit(int(status[0]))
 
 runtime = Path('/software/runtime-tree')
 if not (runtime / 'ld-linux.so.3').exists():

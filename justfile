@@ -147,6 +147,12 @@ software-worker-code run sample tid:
 software-rounding-check:
     docker compose -f compose.software.yaml run --rm lab python3 scripts/software/check_rounding.py
 
+software-rounding-report run:
+    docker compose -f compose.software.yaml run --rm lab python3 scripts/software/check_rounding.py "$@"
+
+software-worker-rounding-probe *args:
+    just software-worker-probe --probe-rounding "$@"
+
 software-transition-report run:
     docker compose -f compose.software.yaml run --rm lab python3 scripts/software/transition_report.py "$@"
 

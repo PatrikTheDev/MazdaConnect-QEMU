@@ -31,6 +31,7 @@ parser.add_argument('--profile-frames', action='store_true', help='Time composit
 parser.add_argument('--trace-render', action='store_true', help='Trace Opera waits and software compositor frame stages')
 parser.add_argument('--sample-render', action='store_true', help='Sample Opera main-thread registers during startup')
 parser.add_argument('--sample-workers', action='store_true', help='With --sample-render, also briefly stop llvmpipe workers to record their PCs and current mappings')
+parser.add_argument('--probe-rounding', action='store_true', help='Run the independent ARMEL rounding-contract check after normal runtime setup and before launching Opera')
 parser.add_argument('--inspect-surface', action='store_true', help='After the normal capture, explicitly show the browser surface for a separate diagnostic capture')
 parser.add_argument('--test-page', action='store_true')
 parser.add_argument('--trace-transitions', action='store_true', help='Log original UI animation callbacks and pending targets without changing timing rules')
@@ -62,6 +63,8 @@ parser.add_argument('--seconds', type=int, default=45)
 args = parser.parse_args()
 if args.sample_workers and not args.sample_render:
     parser.error('--sample-workers requires --sample-render')
+if args.probe_rounding and not args.opera:
+    parser.error('--probe-rounding requires --opera for the modern runtime')
 if args.animation_lifecycle and not args.probe_animations:
     parser.error('--animation-lifecycle requires --probe-animations')
 if args.verify_mic_gain and not (args.verify_audio and args.probe_audio and args.audio_devices):
@@ -211,6 +214,11 @@ kill $lab_opera_pid
     if args.sample_render:
         worker_option = ' --workers' if args.sample_workers else ''
         commands = commands.replace('lab_opera_pid=$!\n', 'lab_opera_pid=$!\n/lab-software/sample-process "$lab_opera_pid"' + worker_option + ' > /tmp/software/opera-samples.log 2>&1 &\n')
+    if args.probe_rounding:
+        commands = commands.replace('. /lab-software/start-services\n',
+            '. /lab-software/start-services\n'
+            '/lab-software/runtime/ld-linux.so.3 --library-path /lab-software/runtime /lab-software/rounding-check > /tmp/software/rounding.log 2>&1\n'
+            'echo ROUNDING_RC=$? >> /tmp/software/rounding.log\n')
     commands = commands.replace('sleep 25\n', 'sleep ' + str(args.seconds) + '\n')
     if args.debug_services:
         commands = commands.replace('. /lab-software/start-services', '''mkdir -p /tmp/common/log
@@ -294,6 +302,9 @@ if args.capture_sequence:
         name = f'sequence-{i:02d}.ppm'
         subprocess.run(['debugfs', '-R', f'dump /{name} {home / name}', str(disk)],
                        stdout=subprocess.PIPE, stderr=subprocess.STDOUT, check=True)
+if args.probe_rounding:
+    subprocess.run(['debugfs','-R',f'dump /rounding.log {home / "rounding.log"}',str(disk)],
+                   stdout=subprocess.PIPE,stderr=subprocess.STDOUT,check=True)
 if (home / 'compositor.log').exists():
     Path('runs/software-compositor.log').write_bytes((home / 'compositor.log').read_bytes())
 if args.opera and (home / 'opera.log').exists():

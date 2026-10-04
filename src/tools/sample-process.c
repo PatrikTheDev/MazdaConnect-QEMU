@@ -4,6 +4,7 @@
 #include <signal.h>
 #include <stdio.h>
 #include <stdlib.h>
+#include <stdint.h>
 #include <string.h>
 #include <sys/ptrace.h>
 #include <sys/user.h>
@@ -22,6 +23,10 @@ static int sample_worker(long tid, unsigned sample) {
     if (!WIFSTOPPED(status)) return 0;
     struct user_regs regs;
     int ok=!ptrace(PTRACE_GETREGS,tid,0,&regs);
+    uint32_t vfp[65]; /* ARM UAPI: 32 eight-byte registers, then FPSCR. */
+    int vfp_ok=!ptrace(PTRACE_GETVFPREGS,tid,0,vfp);
+    int vfp_error=errno;
+    if (vfp_ok) printf("WORKER_FP sample=%u tid=%ld fpscr=%08x\n",sample,tid,vfp[64]);
     if (ok) {
         struct timespec wall,mono;
         if (!clock_gettime(CLOCK_REALTIME,&wall) && !clock_gettime(CLOCK_MONOTONIC,&mono))
@@ -55,6 +60,7 @@ static int sample_worker(long tid, unsigned sample) {
     int deliver=WSTOPSIG(status)==SIGSTOP ? 0 : WSTOPSIG(status);
     if (ptrace(PTRACE_DETACH,tid,0,deliver)) { perror("worker detach"); return -1; }
     if (!ok) { perror("worker registers"); return -1; }
+    if (!vfp_ok) { errno=vfp_error; perror("worker VFP registers"); return -1; }
     return 0;
 }
 
