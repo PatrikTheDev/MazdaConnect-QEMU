@@ -163,24 +163,30 @@ static void draw(struct output *out, void *view, int ox, int oy, void *surface) 
     unsigned opacity = *(unsigned *)((char *)view + 240);
     if (!opacity) return;
     struct software *sw = owner(out);
-    int bx=out->x, by=out->y;
+    /* Winston transforms and local clipping use signed 24.8 coordinates.
+     * Surface offsets and pixel-buffer indices use whole pixels. */
+    if (out->x<INT_MIN/256 || out->y<INT_MIN/256 ||
+        (int64_t)out->x+WIDTH-1>INT_MAX/256 ||
+        (int64_t)out->y+HEIGHT-1>INT_MAX/256) {
+        fputs("SOFTWARE output exceeds Winston coordinate range\n",stderr); abort();
+    }
+    int bx=out->x*256, by=out->y*256;
     int translated=!getenv("MAZDA_REFERENCE_DRAW") && !view_int(view,52) && !view_int(view,32);
     if (translated) {
         (void)wlxs_view_transform_to_local(view,&bx,&by);
         /* Fall back rather than altering overflow behavior for extreme views. */
-        if ((int64_t)bx+WIDTH-1>INT_MAX || (int64_t)by+HEIGHT-1>INT_MAX ||
-            (int64_t)bx-ox<INT_MIN || (int64_t)bx+WIDTH-1-ox>INT_MAX ||
-            (int64_t)by-oy<INT_MIN || (int64_t)by+HEIGHT-1-oy>INT_MAX)
+        if ((int64_t)bx+(WIDTH-1)*256>INT_MAX ||
+            (int64_t)by+(HEIGHT-1)*256>INT_MAX)
             translated=0;
     }
     int verify=translated && getenv("MAZDA_VERIFY_DRAW");
     for (int y=0; y<HEIGHT; ++y) for (int x=0; x<WIDTH; ++x) {
         int sx,sy,inside;
         if (translated) {
-            sx=bx+x; sy=by+y;
+            sx=bx+x*256; sy=by+y*256;
             inside=1;
             if (verify) {
-                int rx=x+out->x, ry=y+out->y;
+                int rx=(x+out->x)*256, ry=(y+out->y)*256;
                 int expected=wlxs_view_transform_to_local(view,&rx,&ry);
                 if (inside!=expected || sx!=rx || sy!=ry) {
                     fprintf(stderr,"SOFTWARE_DRAW_MISMATCH at %d,%d local %d,%d/%d reference %d,%d/%d\n",
@@ -189,13 +195,15 @@ static void draw(struct output *out, void *view, int ox, int oy, void *surface) 
                 }
             }
         } else {
-            sx=x+out->x; sy=y+out->y;
+            sx=(x+out->x)*256; sy=(y+out->y)*256;
             inside=wlxs_view_transform_to_local(view,&sx,&sy);
         }
         if (!inside) continue;
-        sx-=ox; sy-=oy;
-        if (sx<0 || sy<0 || sx>=p->width || sy>=p->height) continue;
-        uint32_t src=pixel(b,sx,sy), dst=sw->frame[y*WIDTH+x];
+        /* ARM's arithmetic shift floors negative fixed-point values, matching
+         * point sampling. Subview offsets are subtracted after conversion. */
+        int64_t px=(int64_t)(sx>>8)-ox, py=(int64_t)(sy>>8)-oy;
+        if (px<0 || py<0 || px>=p->width || py>=p->height) continue;
+        uint32_t src=pixel(b,(int)px,(int)py), dst=sw->frame[y*WIDTH+x];
         unsigned a=(src>>24)*opacity/255, result=0xff000000u;
         for (unsigned shift=0; shift<24; shift+=8) {
             unsigned channel=(src>>shift)&255;
@@ -207,6 +215,8 @@ static void draw(struct output *out, void *view, int ox, int oy, void *surface) 
     }
     if (verify) fprintf(stderr,"SOFTWARE_DRAW_VERIFIED pixels=%d offset=%d,%d\n",
                         WIDTH*HEIGHT,bx,by);
+    if (!translated && getenv("MAZDA_VERIFY_DRAW"))
+        fprintf(stderr,"SOFTWARE_DRAW_REFERENCE custom=%d clip=%d\n",view_int(view,52),view_int(view,32));
 }
 static void save_pixels(const char *path, const uint32_t *pixels) {
     char *temporary=malloc(strlen(path)+5);

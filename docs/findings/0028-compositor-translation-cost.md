@@ -1,5 +1,10 @@
 # Compositor translation fast path
 
+The subsequent user-approved coordinate-unit correction and its geometry
+tests are recorded in [finding 0029](0029-winston-fixed-point-coordinates.md).
+The pending-decision statements below describe the investigation before that
+approval.
+
 The lab CPU output previously invoked Winston's inverse projective transform
 for each of 384,000 output pixels in each view, including identity views.
 The original transform at `winston` 0x1b5dc calls `wlxs_view_update_transform`

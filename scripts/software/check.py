@@ -30,7 +30,7 @@ parser.add_argument('--verify-mic-gain', action='store_true', help='Verify real 
 parser.add_argument('--profile-frames', action='store_true', help='Time compositor stages without attaching to Opera')
 parser.add_argument('--verify-draw', action='store_true', help='Compare every translation fast-path coordinate with original Winston')
 parser.add_argument('--reference-draw', action='store_true', help='Use the original per-pixel transform calls for compositor cost comparison')
-parser.add_argument('--probe-draw-positions', action='store_true', help='Verify positive/negative stock IVI positions against shifted browser test-page pixels')
+parser.add_argument('--probe-draw-positions', action='store_true', help='Verify stock IVI translation, crop, scale and animated positions against browser pixels')
 parser.add_argument('--trace-render', action='store_true', help='Trace Opera waits and software compositor frame stages')
 parser.add_argument('--sample-render', action='store_true', help='Sample Opera main-thread registers during startup')
 parser.add_argument('--sample-workers', action='store_true', help='With --sample-render, also briefly stop llvmpipe workers to record their PCs and current mappings')
@@ -69,6 +69,15 @@ if args.verify_draw and args.reference_draw:
     parser.error('--verify-draw and --reference-draw are mutually exclusive')
 if args.probe_draw_positions and not (args.opera and args.test_page and args.inspect_surface):
     parser.error('--probe-draw-positions requires --test-page --inspect-surface')
+draw_cases = (
+    # label, destination x/y/w/h, source origin x/y, point-sampling step
+    ('positive',40,25,800,480,0,0,1),
+    ('negative',-30,-20,800,480,0,0,1),
+    ('animated',40,25,800,480,0,0,1),
+    ('crop',40,25,320,200,120,90,1),
+    ('scale',40,25,400,240,0,0,2),
+    ('crop-scale',80,35,160,100,120,90,2),
+)
 if args.sample_workers and not args.sample_render:
     parser.error('--sample-workers requires --sample-render')
 if args.probe_rounding and not args.opera:
@@ -217,9 +226,14 @@ kill $lab_opera_pid
 ''')
     if args.probe_draw_positions:
         positions=''
-        for label,x,y in (('positive',40,25),('negative',-30,-20)):
-            positions += (f'/bin/busybox timeout -t 5 /usr/bin/ivi-shell -p JCI_OPERA_PRIMARY:{x},{y}\n'
-                          f'echo DRAW_POSITION_{label}_RC=$?\nsleep 3\n'
+        for label,x,y,w,h,sx,sy,step in draw_cases:
+            target='JCI_OPERA_PRIMARY'
+            position=f'{x},{y}' if label!='animated' else '0-2000:0,0,10,10,40,25'
+            geometry='' if label in ('positive','negative','animated') else (
+                f'-o {target}:{sx},{sy} -c {target}:{w*step},{h*step} -d {target}:{w},{h} ')
+            positions += (f'/bin/busybox timeout -t 5 /usr/bin/ivi-shell '
+                          f'{geometry}-p {target}:{position}\n'
+                          f'echo DRAW_POSITION_{label}_RC=$?\nsleep 4\n'
                           f'cp /tmp/software/frame.ppm /tmp/software/position-{label}.ppm\n')
         commands=commands.replace('kill $lab_opera_pid\n',positions+'kill $lab_opera_pid\n')
     if args.verify_display:
@@ -334,7 +348,7 @@ for name in ('transition-trace.json', 'websockets-queue-fix.json', 'time-deadlin
     subprocess.run(['debugfs', '-R', f'dump /{name} {home / name}', str(disk)],
                    stdout=subprocess.PIPE, stderr=subprocess.STDOUT, check=True)
 if args.probe_draw_positions:
-    for label in ('positive','negative'):
+    for label,*_ in draw_cases:
         name=f'position-{label}.ppm'
         subprocess.run(['debugfs','-R',f'dump /{name} {home / name}',str(disk)],
                        stdout=subprocess.PIPE,stderr=subprocess.STDOUT,check=True)
@@ -393,19 +407,20 @@ if args.verify_draw:
     print(f'{verified} draws matched original Winston at every output coordinate; blending unchanged.')
 if args.probe_draw_positions:
     base=(home / 'visible.ppm').read_bytes()[len(header):]
-    for label,dx,dy in (('positive',40,25),('negative',-30,-20)):
+    for label,dx,dy,w,h,origin_x,origin_y,step in draw_cases:
         actual=(home / f'position-{label}.ppm').read_bytes()
         expected=bytearray(800*480*3)
         for y in range(480):
             for x in range(800):
-                sx,sy=x-dx,y-dy
-                if 0<=sx<800 and 0<=sy<480:
+                local_x,local_y=x-dx,y-dy
+                sx,sy=origin_x+local_x*step,origin_y+local_y*step
+                if 0<=local_x<w and 0<=local_y<h and 0<=sx<800 and 0<=sy<480:
                     at=(y*800+x)*3; source=(sy*800+sx)*3
                     expected[at:at+3]=base[source:source+3]
         if (actual!=header+expected or
                 not any(line.strip()==f'DRAW_POSITION_{label}_RC=0' for line in lines)):
-            raise SystemExit(f'Stock IVI {label} position pixels differ from the requested translation; inspect retained position-{label}.ppm')
-    print('Positive and negative stock IVI positions produced exact translated browser pixels.')
+            raise SystemExit(f'Stock IVI {label} pixels differ from requested geometry; inspect retained position-{label}.ppm')
+        print(f'Stock IVI {label}: every output pixel matches requested geometry.')
 if args.opera and args.test_page and args.inspect_surface:
     pixels = (home / 'visible.ppm').read_bytes()[len(header):]
     def pixel(x, y):
