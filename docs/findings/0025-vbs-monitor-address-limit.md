@@ -18,7 +18,31 @@ The pinned generic Debian kernel has `CONFIG_VMSPLIT_3G=y` and
 `CONFIG_PAGE_OFFSET=0xC0000000`. Its userspace can receive allocations above
 the synchronization library's 0x7fffffff tag boundary. A contention path that
 inflates a monitor can expose this mismatch even after other boots succeeded.
-We have not established the original vehicle kernel's exact memory split.
+Inspection of the original vehicle kernel confirms a linked kernel virtual
+base of 0x80000000, consistent with the 2 GiB userspace boundary required by
+this pointer representation. It has no embedded configuration, so this is
+evidence from its boot code rather than a recovered `CONFIG_VMSPLIT` setting.
+
+## Original kernel layout evidence
+
+```sh
+just software-original-kernel-layout
+```
+
+This read-only recipe verifies the EU 74.00.324A zImage, decodes its LZO stream
+with liblzo2, validates header and block Adler32 checksums, and verifies the
+decoded image hash. The actual stream starts at byte 6116; the earlier LZO
+magic at byte 5792 belongs to the decompressor's constant table.
+
+The zImage SHA256 is
+`57fe0cda7c1f994a6ca6b3cce7d9cf247f3b5607ebf1ddc12f02598662d5e240`.
+The decoded 4,568,900-byte kernel SHA256 is
+`b45da4c4e862f8261656ae74443a8a36582a861d9dfa42d8fdadee7a72a0cb85`.
+Its ARM head contains linked self-address 0x80008048 at offset 0x48 and
+kernel-base literal 0x80000000 at offset 0x4c. Page-table setup also adds
+0x80000000 at offset 0xec. No `IKCFG_ST` embedded-configuration marker is
+present. This establishes the relevant original address boundary without
+executing or modifying the vehicle kernel.
 
 ## Retained crash evidence
 

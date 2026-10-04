@@ -132,6 +132,9 @@ software-thread-report run *args:
 software-vbs-core-report run *args:
     docker compose -f compose.software.yaml run --rm lab python3 scripts/software/vbs_core_report.py "$@"
 
+software-original-kernel-layout:
+    docker compose -f compose.software.yaml run --rm lab python3 scripts/firmware/kernel_layout.py
+
 software-transition-trace *args:
     just software-websockets-fix-probe --trace-transitions "$@"
 
