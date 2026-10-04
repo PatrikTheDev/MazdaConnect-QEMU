@@ -129,6 +129,9 @@ software-callback-report run:
 software-thread-report run *args:
     docker compose -f compose.software.yaml run --rm lab python3 scripts/software/thread_report.py "$@"
 
+software-vbs-core-report run *args:
+    docker compose -f compose.software.yaml run --rm lab python3 scripts/software/vbs_core_report.py "$@"
+
 software-transition-trace *args:
     just software-websockets-fix-probe --trace-transitions "$@"
 
