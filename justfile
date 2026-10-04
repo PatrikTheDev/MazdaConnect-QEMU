@@ -120,7 +120,7 @@ software-startup-report run:
 software-frame-profile *args:
     just software-websockets-fix-probe --profile-frames "$@"
 
-software-frame-report run:
+software-frame-report run *args:
     docker compose -f compose.software.yaml run --rm lab python3 scripts/software/frame_report.py "$@"
 
 software-callback-report run:

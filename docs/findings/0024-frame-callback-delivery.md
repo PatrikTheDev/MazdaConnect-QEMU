@@ -70,3 +70,34 @@ VBS stopped and the retained SM log contains
 audio services did not reach STARTED. These failures were absent in previously
 verified boots and need separate investigation; this run is not evidence of
 healthy complete startup. The two animation watchdogs remain.
+
+## Compositor timeline during the failing transitions
+
+```sh
+just software-frame-report /software/test-vbaq7rpb --timeline
+```
+
+The optional timeline prints UTC begin/end timestamps, paint/display/save/total
+durations, and the delay from a paired `schedule` record to repaint begin.
+Unpaired begins are labelled explicitly: display-control requests can call
+repaint directly. It uses the existing trace and changes no guest behavior.
+
+For this run, the frame at 14:51:39.332 finished at 14:51:39.657, taking
+324.86 ms. The next began at 14:51:41.111 and finished at 14:51:41.426,
+taking 314.82 ms. Its scheduling request occurred at 14:51:41.092, only
+19.01 ms before begin, rather than at the beginning of the 1.454-second gap.
+The Disclaimer watchdog fired during that latter frame, at 14:51:41.148.
+
+Before HomeScreen's transition, a frame finished at 14:51:44.435. The next
+began at 14:51:45.870, after a scheduling request at 14:51:45.852, and
+completed at 14:51:46.083 (213.50 ms). The transition began at
+14:51:44.862; its watchdog fired at 14:51:46.389. The following repaint
+began at 14:51:46.390 and took 268.60 ms, with an 18.02 ms timer wait.
+
+These active intervals distinguish substantial gaps without logged repaint
+requests from compositor paint work and its roughly 18–19 ms scheduled timer
+waits. Together with the busy llvmpipe worker and main-thread futex samples,
+they support investigating browser rendering/submission next. They do not
+prove the exact wait dependency, which shader is costly, or that compositor
+optimizations cannot help. The timestamps are wall-clock observations and
+include diagnostic overhead; the report does not measure client dispatch.
