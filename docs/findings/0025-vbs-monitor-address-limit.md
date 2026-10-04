@@ -75,8 +75,9 @@ addresses below the tag boundary. It requires building a pinned kernel and
 matching guest modules, then verifying memory layout, monitor contention,
 original VBS/audio startup, and the full UI. This preserves the original
 synchronization implementation and assertion. It is an environment design
-change pending a decision; no kernel split or firmware behavior has been
-changed by this investigation.
+change approved by the user on 2026-10-04. Finding 0027 records the opt-in
+implementation and its verification status. Firmware synchronization behavior
+has not been changed.
 
 Disabling the assertion alone would not fix the representation: bit 31 is
 already occupied by a real pointer in the failing case. Allocator tuning or

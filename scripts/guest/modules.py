@@ -4,9 +4,15 @@ from pathlib import Path
 import subprocess
 
 
-def entries():
-    cfg = json.loads(Path('config/kernel/debian-armmp.json').read_text())
-    root = Path('/lab/kernels') / cfg['version'] / 'package'
+def entries(root=None, version=None):
+    if root is None and version is None:
+        cfg = json.loads(Path('config/kernel/debian-armmp.json').read_text())
+        root = Path('/lab/kernels') / cfg['version'] / 'package'
+        version = cfg['version']
+    elif root is None or version is None:
+        raise ValueError('Provide both module root and kernel version')
+    root = Path(root)
+    cfg = {'version':version}
     subprocess.run(['depmod', '-b', str(root), cfg['version']], check=True)
     modules = {}
     def field(target, key):

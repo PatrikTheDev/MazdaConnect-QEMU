@@ -16,6 +16,11 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
       pulseaudio pulseaudio-utils qemu-system-gui && \
     rm -rf /var/lib/apt/lists/*
 
+# Build the opt-in address-space profile from the pinned kernel source.
+RUN apt-get update && apt-get install -y --no-install-recommends \
+      flex bison bc libssl-dev libelf-dev dwarves && \
+    rm -rf /var/lib/apt/lists/*
+
 # Keep the target header archive's /lib directories away from the host's merged /usr.
 RUN dpkg --add-architecture armhf && apt-get update && \
     apt-get install -y --no-install-recommends linux-kbuild-6.1=6.1.176-1 && \

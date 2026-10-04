@@ -4,13 +4,13 @@ import shutil
 import subprocess
 
 
-def build(home, version):
+def build(home, version, headers=None):
     home.mkdir(parents=True, exist_ok=True)
     target = home / 'gpio-build'
     target.mkdir(exist_ok=True)
     for name in ('Makefile', 'mazda_gpio.c', 'mazda_vip.c', 'vip-transport.h'):
         shutil.copyfile(Path('src/software/gpio') / name, target / name)
-    headers = Path('/usr/src') / ('linux-headers-' + version)
+    headers = Path(headers) if headers else Path('/usr/src') / ('linux-headers-' + version)
     if not headers.exists():
         raise RuntimeError('Matching GPIO build headers are missing. Run just software-image.')
     subprocess.run(['make', '-C', str(headers), 'ARCH=arm',

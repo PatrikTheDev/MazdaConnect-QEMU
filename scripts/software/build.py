@@ -15,6 +15,7 @@ from build import write_entry
 
 parser = argparse.ArgumentParser(description=__doc__)
 parser.add_argument('--opera', action='store_true')
+parser.add_argument('--kernel-profile',choices=('stock','vmsplit2g'),default='stock')
 args = parser.parse_args()
 home = Path('/software/guest')
 home.mkdir(exist_ok=True)
@@ -38,6 +39,12 @@ files = [('lab-software/libwlxs-software.so', plugin.read_bytes(), 0o755),
          ('lab-software/shm-pattern', client.read_bytes(), 0o755),
          ('lab-software/compositor.conf', b'plugin = ivi, software\n', 0o644)]
 directories = ['lab-software']
+from kernel_profile import selected as selected_kernel
+kernel = selected_kernel(args.kernel_profile)
+if args.kernel_profile != 'stock':
+    from modules import entries as module_entries
+    files += module_entries(kernel['package'],kernel['version'])
+    settings['kernel'] = kernel['kernel']
 if args.opera:
     from build_intro_fix import build as build_intro_fix
     files.append(('lab-software/libjciuiasystem-intro-fix.so', build_intro_fix(home), 0o755))
@@ -78,9 +85,8 @@ if args.opera:
     files.append(('usr/bin/splashplayer', player.read_bytes(), 0o755))
     files.append(('lab-software/splashplayer-vendor', Path('/software/sysroot/usr/bin/splashplayer').read_bytes(), 0o755))
     modules = {}
-    kernel = json.loads(Path('config/kernel/debian-armmp.json').read_text())
     from build_gpio import build as build_gpio
-    gpio_module = build_gpio(home, kernel['version'])
+    gpio_module = build_gpio(home, kernel['version'], kernel['headers'])
     files.append(('lab-software/mazda_gpio.ko', gpio_module.read_bytes(), 0o644))
     files.append(('lab-software/mazda_vip.ko', gpio_module.with_name('mazda_vip.ko').read_bytes(), 0o644))
     gpio_check = home / 'gpio-check'
@@ -100,7 +106,7 @@ if args.opera:
                     'src/software/vip-service.c', 'src/software/vip-protocol.c', '-o', str(vip_service)], check=True)
     files.append(('lab-software/vip-service', vip_service.read_bytes(), 0o755))
     directories += ['lib/modules/' + kernel['version']]
-    kernel_root = Path('/lab/kernels') / kernel['version'] / 'package'
+    kernel_root = Path(kernel['package'])
     available = {p.name.split('.ko')[0].replace('-', '_'): p for p in kernel_root.rglob('*.ko')}
     def add_module(name):
         name = name.replace('-', '_')
@@ -120,7 +126,7 @@ if args.opera:
     script += '/bin/busybox insmod /lab-software/mazda_gpio.ko "$@"\n'
     files.append(('lab-software/load-input', script.encode(), 0o755))
     from build_audio import build as build_audio, alsa_adapter, service_config
-    audio_module = build_audio(home, kernel['version'])
+    audio_module = build_audio(home, kernel['version'], kernel['headers'])
     files.append(('lab-software/mazda_hda_mic.ko', audio_module.with_name('mazda_hda_mic.ko').read_bytes(), 0o644))
     available['snd_hda_intel'] = audio_module
     modules.clear()
@@ -182,5 +188,6 @@ with target.open('ab') as raw, gzip.GzipFile(fileobj=raw, mode='wb', mtime=0) as
     write_entry(out, 'TRAILER!!!', 0, 0, 0, 0, 0, io.BytesIO(), 0)
 settings['initrd'] = str(target)
 settings['software_opera'] = args.opera
+settings['kernel_profile'] = args.kernel_profile
 (home / 'profile.json').write_text(json.dumps(settings, indent=2) + '\n')
 print(target)

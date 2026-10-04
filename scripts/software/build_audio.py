@@ -49,7 +49,7 @@ def alsa_adapter():
     return result.encode()
 
 
-def build(home, version):
+def build(home, version, headers=None):
     target = home / 'audio-build'
     target.mkdir(parents=True, exist_ok=True)
     source = Path('/opt/guest-audio-source')
@@ -60,7 +60,7 @@ def build(home, version):
         'obj-m := snd-hda-intel.o mazda_hda_mic.o\n'
         'snd-hda-intel-y := hda_intel.o\n'
         'CFLAGS_hda_intel.o := -I$(src)\n')
-    subprocess.run(['make', '-C', '/usr/src/linux-headers-' + version,
+    subprocess.run(['make', '-C', str(headers) if headers else '/usr/src/linux-headers-' + version,
                     'ARCH=arm', 'CROSS_COMPILE=arm-linux-gnueabi-',
                     'M=' + str(target), 'modules'], check=True)
     return target / 'snd-hda-intel.ko'

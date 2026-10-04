@@ -14,6 +14,9 @@ image-build:
 software-image:
     docker compose -f compose.software.yaml build lab
 
+software-kernel-build *args:
+    docker compose -f compose.software.yaml run --rm lab python3 scripts/software/task.py kernel "$@"
+
 software-shell:
     docker compose -f compose.software.yaml run --rm lab bash
 
