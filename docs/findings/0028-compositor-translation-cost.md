@@ -90,3 +90,35 @@ The explicit original-path replay
 `just software-draw-position-test --reference-draw` also failed in retained run
 `/software/test-4kpco4lr`. This confirms the positioning failure is present
 without the fast path.
+
+## Split capture timings while coordinate correction awaits a decision
+
+Frame profiling now also records `convert_begin`, `converted` and `written`.
+The first interval covers RGB conversion after allocation, the second covers
+`fwrite`, and `written -> saved` covers freeing the RGB buffer, close and
+atomic publication. Opening/allocating precede conversion and remain part of
+the complete save interval. All are wall-clock measurements under guest
+scheduling, rather than isolated CPU or device timings. Existing logs without
+these stages remain reportable. Tracing is still opt-in; normal capture format,
+frequency, atomic rename and callback ordering are unchanged.
+
+```sh
+just software-frame-profile --kernel-profile vmsplit2g --trace-transitions --seconds 90
+just software-frame-report /software/test-f8p2ykzt
+```
+
+The run retained 95 complete frames. Median conversion was 13.85 ms,
+`fwrite` 27.51 ms, and close/publication 7.56 ms. The total save median was
+53.32 ms and complete frame median 95.35 ms. Individual medians need not add
+to the total median. The conversion loop is therefore only part of capture
+cost; replacing it alone cannot remove file-writing/publication work. These
+frame measurements do not establish the cause of the much longer browser
+submission gaps or justify reducing capture frequency or changing animation
+rules.
+
+The original HomeScreen was visually inspected. Original VBS, system, settings,
+time, database, UI and the selected audio services reached STARTED, with zero
+JavaScript exceptions, heartbeat misses and database semaphore failures.
+Both animation watchdogs and absent application-service subscriptions remain.
+The coordinate-unit correction is still pending; this measurement does not
+override the failing positioning contract or prove project completion.

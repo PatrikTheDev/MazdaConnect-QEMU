@@ -218,6 +218,7 @@ static void save_pixels(const char *path, const uint32_t *pixels) {
     fprintf(file,"P6\n%d %d\n255\n",WIDTH,HEIGHT);
     unsigned char *rgb = malloc(WIDTH*HEIGHT*3);
     if (!rgb) { fclose(file); remove(temporary); free(temporary); return; }
+    trace_render("convert_begin");
     for (int y=0; y<HEIGHT; ++y) {
         for (int x=0; x<WIDTH; ++x) {
             uint32_t c=pixels[y*WIDTH+x];
@@ -225,7 +226,9 @@ static void save_pixels(const char *path, const uint32_t *pixels) {
             rgb[offset]=c>>16; rgb[offset+1]=c>>8; rgb[offset+2]=c;
         }
     }
+    trace_render("converted");
     if (fwrite(rgb,1,WIDTH*HEIGHT*3,file)!=WIDTH*HEIGHT*3) { perror("software frame write"); complete=0; }
+    trace_render("written");
     free(rgb);
     if (fclose(file)) complete=0;
     /* Readers must never capture a partially written frame. */

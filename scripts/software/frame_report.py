@@ -26,7 +26,7 @@ for line in (args.run / 'compositor.log').read_text(errors='replace').splitlines
         if scheduled is not None and scheduled <= stamp:
             current['schedule'] = scheduled
         scheduled = None
-    if stage in expected:
+    if stage in (*expected, 'convert_begin', 'converted', 'written'):
         current[stage] = stamp
     if stage == 'callbacks' and all(key in current for key in expected):
         if all(current[b] >= current[a] for a, b in zip(expected, expected[1:])):
@@ -39,6 +39,9 @@ for frame in frames:
     for a, b in zip(expected, expected[1:]):
         samples[a + ' -> ' + b].append(1000*(frame[b]-frame[a]))
     samples['total'].append(1000*(frame['callbacks']-frame['begin']))
+    for a,b in (('convert_begin','converted'),('converted','written'),('written','saved')):
+        if a in frame and b in frame and frame[b]>=frame[a]:
+            samples[a + ' -> ' + b].append(1000*(frame[b]-frame[a]))
 print(f'{len(frames)} complete frames; durations in ms, excluding idle intervals')
 for label, values in samples.items():
     ordered = sorted(values)
