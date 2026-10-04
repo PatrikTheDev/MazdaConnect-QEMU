@@ -60,6 +60,44 @@ matches original Winston for the observed fractional movement, not only
 whole-pixel or zero origins.
 
 `just test` passed: 13 unit tests, shell checks and ARM userspace/full-system
-QEMU initialization. Full original-UI startup and live interaction after this
-correction are still being checked. Arbitrary perspective distortion,
+QEMU initialization. Arbitrary perspective distortion,
 rotation and filtering parity are not proved by these axis-aligned cases.
+
+## Original UI startup and live interaction
+
+Bounded startup `/software/test-l8rwtwk6` verified 107 fast-path draws
+(41,088,000 output coordinates). HomeScreen was visually inspected, and the
+retained kernel-layout report passed with 3,429 ordinary mappings across
+28 processes below the 0x80000000 boundary. Original VBS, system, settings,
+time, database, MMUI and selected audio services reached STARTED. The checked
+logs had zero JavaScript exceptions, heartbeat misses and database semaphore
+failures. Two startup animation watchdogs remain.
+
+```sh
+just software-boot --kernel-profile vmsplit2g --renderer llvmpipe --intro-race-fix --time-deadline-fix --websockets-queue-fix --seconds 240 --start-delay 0
+just software-capture
+just software-key right
+just software-key right
+just software-key ret
+just software-capture
+just software-key backspace
+just software-capture
+just software-stop
+```
+
+Allow each visible transition to settle before the next capture/key. In live
+run `/software/live-_a_z4sxi`, real QEMU input opened the original Settings
+Display tab and Backspace returned to HomeScreen. VNC scanout captures were
+visually inspected and retained locally as `software-coordinate-home.png`,
+`software-coordinate-settings.png` and `software-coordinate-back.png` under
+ignored `artifacts/`. The displayed guest clock advanced across minute changes.
+Original transition logs corroborate HomeScreen -> DisplayTab -> HomeScreen.
+The guest shut down cleanly at uptime 177.98 seconds.
+
+All selected services reached STARTED. There were no JavaScript exceptions,
+MMUI parse errors, heartbeat misses, database semaphore failures or known VBS
+monitor assertions. Four animation watchdogs occurred across startup and this
+interaction sequence, so rendering deadlines remain unresolved. Missing
+application-service subscriptions also remain. This proves the approved
+coordinate correction and this interaction path, not every application,
+transform or the complete project objective.
