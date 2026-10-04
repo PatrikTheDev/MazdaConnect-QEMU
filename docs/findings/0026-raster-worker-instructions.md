@@ -62,3 +62,49 @@ identify the complete shader, or justify bypassing floating-point semantics.
 Sampled PCs, especially under emulation, are not instruction-level cycle
 measurements. Further investigation should preserve the original rounding
 behavior and distinguish actual shader cost from sampling/emulation effects.
+
+## Exact runtime rounding path and compatibility check
+
+```sh
+just software-inspect /software/runtime-tree/libm.so.6 0x3d184 0x3d2c0
+just software-inspect /software/runtime-tree/libm.so.6 0x4c800 0x4c890
+just software-inspect /software/runtime-tree/libm.so.6 0x82b4 0x8370
+just software-rounding-check
+```
+
+For small nonintegral inputs, the installed `nearbyintf` calls `feholdexcept`
+at 0x3d1d8 or 0x3d260, performs arithmetic via helpers at 0x4c844 and
+0x4c840, then calls `fesetenv` at 0x3d20c or 0x3d294. Those helpers operate on
+floating-point bit patterns with integer instructions. Meanwhile,
+`feholdexcept` reads and writes FPSCR through VFP instructions, and
+`fesetenv` restores it. The samples at 0x82e4 and 0x8368 therefore match
+specific environment-management instructions in this call path; they are
+not evidence that the entire rasterizer lacks NEON.
+
+The new check compiles an ARMEL executable with builtin replacement disabled,
+calls `nearbyintf` through a volatile function pointer, and runs it under
+QEMU user-mode Cortex-A15 using the same flat runtime loader and libm as the
+guest. It checks mode-selection success and `fegetround` before evaluating
+0.5, 1.5 and -1.5 in each of four modes. Results must match the selected
+rounding direction and must not raise FE_INEXACT. The original rounding mode
+is restored before exit. This is a contract diagnostic, not a performance
+benchmark or a full-system execution test.
+
+The tested libm SHA256 is
+`8fb6ed088476bc096a524553e97cc5a6dc288d1db0cfe8114526833b214ff868`.
+Both executions produced the same **7/12 passing checks** and a failing exit
+status. All round-to-nearest cases passed. Despite successful selection of
+other modes, downward 1.5 produced 2 rather than 1; upward 0.5 and -1.5
+produced 0 and -2 rather than 1 and -1; toward-zero 1.5 and -1.5 produced
+2 and -2 rather than 1 and -1. No tested call raised FE_INEXACT.
+
+This exposes a rounding-mode compatibility limitation in the current
+ARMEL/QEMU runtime combination. The active raster rounding mode has not been
+measured, and the full-system behavior has not been checked with this probe.
+Consequently it does not establish visual corruption, the cause of animation
+watchdogs, or whether the issue also occurs outside emulation. The diagnostic
+must retain its failing result rather than accepting the observed values.
+No math replacement, environment bypass or runtime-build adaptation has been
+introduced. `just test` passes independently; it does not cover this newly
+observed contract failure. Any adaptation needs a decision under the project
+instructions, and further investigation must preserve rounding semantics.
