@@ -32,6 +32,7 @@ parser.add_argument('--trace-render', action='store_true', help='Trace Opera wai
 parser.add_argument('--sample-render', action='store_true', help='Sample Opera main-thread registers during startup')
 parser.add_argument('--sample-workers', action='store_true', help='With --sample-render, also briefly stop llvmpipe workers to record their PCs and current mappings')
 parser.add_argument('--probe-rounding', action='store_true', help='Run the independent ARMEL rounding-contract check after normal runtime setup and before launching Opera')
+parser.add_argument('--verify-kernel-layout', action='store_true', help='Retain all process mappings before browser shutdown for the opt-in 2 GiB profile')
 parser.add_argument('--inspect-surface', action='store_true', help='After the normal capture, explicitly show the browser surface for a separate diagnostic capture')
 parser.add_argument('--test-page', action='store_true')
 parser.add_argument('--trace-transitions', action='store_true', help='Log original UI animation callbacks and pending targets without changing timing rules')
@@ -65,6 +66,8 @@ if args.sample_workers and not args.sample_render:
     parser.error('--sample-workers requires --sample-render')
 if args.probe_rounding and not args.opera:
     parser.error('--probe-rounding requires --opera for the modern runtime')
+if args.verify_kernel_layout and not args.opera:
+    parser.error('--verify-kernel-layout requires --opera')
 if args.animation_lifecycle and not args.probe_animations:
     parser.error('--animation-lifecycle requires --probe-animations')
 if args.verify_mic_gain and not (args.verify_audio and args.probe_audio and args.audio_devices):
@@ -117,6 +120,10 @@ with disk.open('wb') as stream:
     stream.truncate(128 * 1024**2)
 subprocess.run(['mkfs.ext4', '-q', '-F', '-L', 'MAZDA_SOFTWARE', str(disk)], check=True)
 settings = json.loads(Path('/software/guest/profile.json').read_text())
+if args.verify_kernel_layout:
+    if settings.get('kernel_profile') != 'vmsplit2g':
+        parser.error('--verify-kernel-layout requires --kernel-profile vmsplit2g')
+    (home / 'kernel-build.json').write_bytes(Path('/software/kernels/vmsplit2g/manifest.json').read_bytes())
 settings['disks'].append({'path': str(disk), 'read_only': False})
 cmd = software_command(settings, live=args.probe_lvds or args.verify_display or args.live_output,
                        audio_dir=home if args.audio_devices else None) if args.opera else command(settings)
@@ -219,6 +226,15 @@ kill $lab_opera_pid
             '. /lab-software/start-services\n'
             '/lab-software/runtime/ld-linux.so.3 --library-path /lab-software/runtime /lab-software/rounding-check > /tmp/software/rounding.log 2>&1\n'
             'echo ROUNDING_RC=$? >> /tmp/software/rounding.log\n')
+    if args.verify_kernel_layout:
+        commands = commands.replace('kill -0 $lab_opera_pid; echo OPERA_ALIVE_RC=$?\n',
+            'kill -0 $lab_opera_pid; echo OPERA_ALIVE_RC=$?\n'
+            '{ echo KERNEL_RELEASE=$(/bin/busybox uname -r); '
+            'for lab_maps in /proc/[0-9]*/maps; do '
+            'if test -s "$lab_maps" || test -r "$lab_maps"; then '
+            'lab_content=$(/bin/busybox cat "$lab_maps" 2>&1); '
+            'if test -n "$lab_content"; then echo MAPS:$lab_maps; echo "$lab_content"; fi; '
+            'fi; done; } > /tmp/software/kernel-layout.log\n')
     commands = commands.replace('sleep 25\n', 'sleep ' + str(args.seconds) + '\n')
     if args.debug_services:
         commands = commands.replace('. /lab-software/start-services', '''mkdir -p /tmp/common/log
@@ -304,6 +320,9 @@ if args.capture_sequence:
                        stdout=subprocess.PIPE, stderr=subprocess.STDOUT, check=True)
 if args.probe_rounding:
     subprocess.run(['debugfs','-R',f'dump /rounding.log {home / "rounding.log"}',str(disk)],
+                   stdout=subprocess.PIPE,stderr=subprocess.STDOUT,check=True)
+if args.verify_kernel_layout:
+    subprocess.run(['debugfs','-R',f'dump /kernel-layout.log {home / "kernel-layout.log"}',str(disk)],
                    stdout=subprocess.PIPE,stderr=subprocess.STDOUT,check=True)
 if (home / 'compositor.log').exists():
     Path('runs/software-compositor.log').write_bytes((home / 'compositor.log').read_bytes())

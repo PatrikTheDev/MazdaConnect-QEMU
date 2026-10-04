@@ -17,6 +17,12 @@ software-image:
 software-kernel-build *args:
     docker compose -f compose.software.yaml run --rm lab python3 scripts/software/task.py kernel "$@"
 
+software-kernel-probe *args:
+    just software-websockets-fix-probe --kernel-profile vmsplit2g --verify-kernel-layout --seconds 90 "$@"
+
+software-kernel-layout-report run:
+    docker compose -f compose.software.yaml run --rm lab python3 scripts/software/kernel_layout_report.py "$@"
+
 software-shell:
     docker compose -f compose.software.yaml run --rm lab bash
 

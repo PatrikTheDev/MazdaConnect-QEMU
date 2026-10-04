@@ -8,7 +8,8 @@ synchronization library or its assertion.
 ```sh
 just software-image
 just software-kernel-build
-just software-websockets-fix-probe --kernel-profile vmsplit2g --seconds 90
+just software-kernel-probe
+just software-kernel-layout-report /software/<retained-run>
 just software-boot --kernel-profile vmsplit2g --renderer llvmpipe --intro-race-fix --time-deadline-fix --websockets-queue-fix
 ```
 
@@ -52,3 +53,11 @@ replaces the base initramfs disk-module loader with matching modules.
 is underway. Its boot, runtime address layout, original VBS/audio operation
 and UI have not yet been verified. No successful custom-kernel startup is
 claimed at this checkpoint.
+
+The kernel probe retains the build manifest used for that run and a sequential
+snapshot of nonempty process mappings immediately before browser shutdown.
+The report requires the expected kernel release and all ordinary mapping ends
+at or below 0x80000000. Only the fixed read-only ARM `[vectors]` helper page
+at 0xffff0000 is exempt. Malformed/error records fail verification. These
+snapshots establish observed address placement, not exhaustive monitor
+contention coverage or every past/future allocation.
