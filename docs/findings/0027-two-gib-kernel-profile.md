@@ -10,6 +10,7 @@ just software-image
 just software-kernel-build
 just software-kernel-probe
 just software-kernel-layout-report /software/<retained-run>
+just software-mic-gain-test --kernel-profile vmsplit2g
 just software-boot --kernel-profile vmsplit2g --renderer llvmpipe --intro-race-fix --time-deadline-fix --websockets-queue-fix
 ```
 
@@ -49,10 +50,31 @@ replaces the base initramfs disk-module loader with matching modules.
 
 ## Verification status
 
-`just test` passed for the initial integration. The custom kernel compilation
-is underway. Its boot, runtime address layout, original VBS/audio operation
-and UI have not yet been verified. No successful custom-kernel startup is
-claimed at this checkpoint.
+The complete kernel/module build succeeded. The selected release is
+`6.1.176-mazda-2g`; its normalized configuration SHA256 is
+`4b6e7f52953935ea1b26b886e57f7b430d41cc2c2cf2e6e048b1f8032b087a03`
+and zImage SHA256 is
+`cfc2027c53e8396fccd6a534aedf92e3f2e3c21fb5dbbf144c28c885023e052d`.
+Module packaging also checks each selected module's vermagic release.
+
+Full original UI run `/software/test-dwdbwe6y` rendered HomeScreen.
+The retained layout report passed: 3,427 ordinary mappings across 28 processes
+satisfied the boundary, with 28 fixed ARM helper pages exempted. Original VBS
+reached STARTED at 22.384 seconds, and all selected audio services reached
+STARTED. There were no monitor assertions, module-loading errors, JavaScript
+exceptions, heartbeat misses or database semaphore failures in the checked
+logs. Two animation watchdogs and missing application-service subscriptions
+remain; this is not a claim of complete infotainment emulation or a rendering
+performance fix. The generic UI probe exits 1 intentionally for manual review;
+its layout and service reports were checked separately.
+
+`just software-mic-gain-test --kernel-profile vmsplit2g` passed in retained run
+`/software/test-hl9xezfn`. Original ALSA speaker playback, microphone capture
+and Bluetooth PCM transfers carried the expected tones. Both capture channels
+measured full-gain RMS 5,651.8 and half-control RMS 697.9 (ratio 0.123), matching
+the documented QEMU/PulseAudio adapter behavior. This verifies actual audio
+transfers separately from service readiness. `just test` also passed: 13 unit
+tests, shell checks and the ARM userspace/full-system smoke check.
 
 The kernel probe retains the build manifest used for that run and a sequential
 snapshot of nonempty process mappings immediately before browser shutdown.

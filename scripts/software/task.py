@@ -1,5 +1,6 @@
 """Serialize builds and runs that share the software lab's writable artifacts."""
 import fcntl
+import argparse
 import json
 import os
 from pathlib import Path
@@ -23,13 +24,10 @@ except BlockingIOError:
 os.set_inheritable(lock.fileno(), True)
 if mode == 'kernel':
     os.execv(sys.executable,[sys.executable,'scripts/software/build_kernel.py',*args])
-kernel_profile = None
-if '--kernel-profile' in args:
-    index = args.index('--kernel-profile')
-    if index+1 >= len(args) or args[index+1] not in ('stock','vmsplit2g'):
-        raise SystemExit('--kernel-profile requires stock or vmsplit2g')
-    kernel_profile = args[index+1]
-    del args[index:index+2]
+selection = argparse.ArgumentParser(add_help=False,allow_abbrev=False)
+selection.add_argument('--kernel-profile',choices=('stock','vmsplit2g'))
+options,args = selection.parse_known_args(args)
+kernel_profile = options.kernel_profile
 if mode == 'run' and kernel_profile is not None:
     built = json.loads(Path('/software/guest/profile.json').read_text())
     if built.get('kernel_profile','stock') != kernel_profile:

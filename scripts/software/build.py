@@ -113,6 +113,9 @@ if args.opera:
         if name in modules:
             return
         source = available[name]
+        vermagic = subprocess.check_output(['modinfo','-F','vermagic',str(source)],text=True).split()
+        if not vermagic or vermagic[0] != kernel['version']:
+            raise RuntimeError('Module release differs from selected kernel: '+str(source))
         dependencies = subprocess.check_output(['modinfo', '-F', 'depends', str(source)], text=True).strip()
         for dep in filter(None, dependencies.split(',')):
             add_module(dep)

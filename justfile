@@ -200,8 +200,8 @@ software-time-probe *args:
 software-mic-gain-report run:
     docker compose -f compose.software.yaml run --rm lab python3 scripts/software/check_mic_gain.py "$@"
 
-software-mic-gain-test:
-    just software-opera-test --audio-devices --microphone-tone 700 --probe-audio --probe-vip-service --verify-audio --verify-mic-gain --seconds 10 --debug-services
+software-mic-gain-test *args:
+    just software-opera-test --audio-devices --microphone-tone 700 --probe-audio --probe-vip-service --verify-audio --verify-mic-gain --seconds 10 --debug-services "$@"
 
 software-audio-test:
     just software-opera-test --audio-devices --microphone-tone 700 --probe-audio --probe-vip-service --verify-audio --seconds 10 --debug-services

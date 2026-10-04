@@ -23,6 +23,9 @@ def entries(root=None, version=None):
         if filename == '(builtin)':
             return
         source = Path(filename)
+        vermagic = field(target,'vermagic').split()
+        if not vermagic or vermagic[0] != version:
+            raise ValueError('Disk module release differs from selected kernel: '+str(source))
         name = 'lab-modules/' + source.name
         if name in modules:
             if modules[name] != source:
