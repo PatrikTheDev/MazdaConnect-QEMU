@@ -123,6 +123,12 @@ software-frame-profile *args:
 software-frame-report run:
     docker compose -f compose.software.yaml run --rm lab python3 scripts/software/frame_report.py "$@"
 
+software-callback-report run:
+    docker compose -f compose.software.yaml run --rm lab python3 scripts/software/callback_report.py "$@"
+
+software-thread-report run *args:
+    docker compose -f compose.software.yaml run --rm lab python3 scripts/software/thread_report.py "$@"
+
 software-transition-trace *args:
     just software-websockets-fix-probe --trace-transitions "$@"
 
