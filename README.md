@@ -147,3 +147,18 @@ Original settings can adjust HDA microphone capture gain through `MIC Level`.
 Run `just software-mic-gain-test` to verify actual captured audio at full and
 half control settings. See the [gain mapping and calibration limitation](docs/findings/0022-hda-microphone-gain.md)
 before interpreting HDA's reported dB values.
+
+The opt-in 2 GiB userspace kernel matches the address boundary required by
+the original VBS monitor-pointer representation. Build it once with
+`just software-kernel-build`, then check startup with `just software-kernel-probe`.
+For the live viewer, run:
+
+```sh
+just software-boot --kernel-profile vmsplit2g --renderer llvmpipe --intro-race-fix --time-deadline-fix --websockets-queue-fix
+```
+
+Stock remains the default for new builds. `just software-run` reuses the
+currently built profile. Audio can be checked with
+`just software-mic-gain-test --kernel-profile vmsplit2g`.
+See [kernel build and validation](docs/findings/0027-two-gib-kernel-profile.md)
+for matching-module checks, retained evidence and remaining animation delays.

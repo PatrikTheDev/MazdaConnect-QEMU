@@ -148,3 +148,39 @@ thread. After sample 45 it was mostly idle, with sampled PC in the futex wait.
 These data narrow investigation toward the software raster workload, including
 its generated code and floating-point environment operations. Two hits in
 `fesetenv` do not establish its total cost or justify bypassing it.
+## Startup trace with the corrected userspace boundary
+
+```sh
+just software-frame-profile --kernel-profile vmsplit2g --trace-transitions --seconds 90
+just software-frame-report /software/test-ea_xg5bw --timeline
+just software-transition-report /software/test-ea_xg5bw
+just software-health-report /software/test-ea_xg5bw
+```
+
+This run uses the validated 2 GiB kernel from finding 0027, without ptrace
+worker sampling. Original VBS and the selected audio services reached STARTED;
+HomeScreen was visually inspected. Both animation watchdogs remained, with
+zero JavaScript exceptions, heartbeat misses and database semaphore failures.
+Missing application-service subscriptions remain. The generic UI diagnostic
+exit 1 still requires manual pixel/log review.
+
+The compositor retained 82 complete frames. Painting median/p95/max was
+121.59/331.35/410.68 ms; saving the diagnostic PPM was
+43.87/151.73/175.41 ms; total frame duration was
+169.75/505.74/604.26 ms. These mix startup workloads and include tracing and
+single-vCPU scheduling effects; they are not pure isolated drawing costs.
+
+Disclaimer's transition listener was installed at 20:14:09.383 UTC. Its
+incoming animation started at 20:14:12.189, the watchdog log appeared at
+20:14:12.246, and the natural animation end arrived at 20:14:13.315.
+HomeScreen's listener was installed at 20:14:15.992; its watchdog fired at
+20:14:18.071, before incoming animationstart at 20:14:20.063.
+
+Immediately before HomeScreen, the frame ending at 20:14:14.814 was followed
+by the next beginning at 20:14:16.973. That frame's scheduled timer wait was
+only 17.43 ms, and painting/display/save took 155.64/20.87/57.76 ms. Thus the
+long submission gap remains alongside substantial compositor work. The
+corrected pointer boundary does not resolve either startup watchdog. These
+measurements support further browser-submission and compositor-cost analysis;
+they do not justify changing the original animation deadlines or synthesizing
+completion events.
