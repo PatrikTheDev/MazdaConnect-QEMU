@@ -18,7 +18,7 @@ The probe defaults to connected. This models device presence; it does not provid
 a radio tuner, audio routing, or declare the entire infotainment stack ready.
 The normal live boot still does not enable the incomplete VIP peer by default.
 
-`software-vip-protocol-test` covers each state and the selective mask. Pending
+`just dev software check_vip_protocol` covers each state and the selective mask. Pending
 status replies wait for an outstanding frame's acknowledgment, and take priority
 over the next periodic heartbeat. Original-binary validation is required to
 confirm the mask interpretation and resulting system transition.

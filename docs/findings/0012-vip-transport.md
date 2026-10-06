@@ -37,7 +37,7 @@ Static evidence in original `vim_app`:
   transfer, TX filled with 0xff. Its diagnostic expects zero RX during this frame.
   Further state transitions must be recovered before implementing responses.
 
-Verification on 2026-09-09: `software-vip-test` passed twice, including module
+Verification on 2026-09-09: `just probe --verify-vip --seconds 5` passed twice, including module
 reload, in `/software/test-m9tqz99a`. Original VIM then reported successful
 `SPI_Init`, `VIMGPIO_Init`, and `VIPBUS_init` in `/software/test-v699hzpz`, reaching
 `IUC_Start`. No VIP protocol backend was present in that run. `just test` passed.
@@ -55,7 +55,7 @@ when exercised. The transport and its test were corrected to GPIO 42 / SIGIO.
 The earlier transport-only test did not catch that ABI mistake; original-binary
 validation remains necessary.
 
-The corrected transport passed `software-vip-test` in `/software/test-r0my4h8n`.
+The corrected transport passed `just probe --verify-vip --seconds 5` in `/software/test-r0my4h8n`.
 Original VIM validation in `/software/test-99fhqs21` confirmed `VIP IRQ detected`
 and captured a real 20-byte transaction at 4 MHz / mode 3:
 

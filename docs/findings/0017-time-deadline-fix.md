@@ -49,7 +49,7 @@ just view
 just probe --audio-devices --audio-services --probe-vip-service --live-output --seconds 90 --debug-services --capture-sequence --renderer llvmpipe --intro-race-fix --time-services --seconds 90
 ```
 
-`software-time-fix-test` passed against the actual firmware: exactly one byte
+`just dev software check_time_fix` passed against the actual firmware: exactly one byte
 changed, output length unchanged, manifest hash correct, reference hash
 unchanged, and the original time-service entries present once each.
 `just test` also passed (13 unit tests, shellcheck, ARM/QEMU smoke checks).

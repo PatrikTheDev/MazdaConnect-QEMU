@@ -19,7 +19,7 @@ just dev software task boot --temperature 35000 --trip-temperature 90000
 just view
 ```
 
-`software-run` accepts the same options after rebuilding the guest once. The
+`just dev software task run` accepts the same options after rebuilding the guest once. The
 threshold is set at module load and remains read-only until reload/reboot because
 the firmware caches it during startup. Temperature can change while running. In
 the guest shell:

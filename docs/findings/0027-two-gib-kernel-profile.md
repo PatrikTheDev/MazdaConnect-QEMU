@@ -15,7 +15,7 @@ just dev software task boot --kernel-profile vmsplit2g --renderer llvmpipe --int
 ```
 
 Stock remains the default for builds. Explicit `--kernel-profile stock`
-rebuilds that profile; `software-run` reuses the currently built profile and
+rebuilds that profile; `just dev software task run` reuses the currently built profile and
 rejects an explicitly requested profile that differs. The shared software
 lock prevents concurrent kernel/overlay builds and guests. The separate
 Vivante checkout and reference firmware are not modified.

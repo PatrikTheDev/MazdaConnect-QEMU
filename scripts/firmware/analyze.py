@@ -19,7 +19,7 @@ def analyze(data):
     verify(home / 'original.up', data)
     outer = home / 'outer'
     if not outer.is_dir():
-        raise ValueError('Run firmware-extract first')
+        raise ValueError('Run just setup, or just dev firmware manage extract MANIFEST, first')
     analysis = home / 'analysis'
     analysis.mkdir(exist_ok=True)
     report = {'package': data, 'payloads': [], 'rootfs': {}, 'samples': {}}

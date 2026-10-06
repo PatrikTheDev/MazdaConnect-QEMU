@@ -104,7 +104,7 @@ recordings were silent, and microphone active samples were too short. Bluetooth
 also reported overruns. Mixer state and capture timing remain under investigation;
 successful client exit codes are not treated as successful audio emulation.
 
-`software-audio-services-probe` prepares a separate service-manager profile from
+`just probe --audio-devices --audio-services --probe-vip-service --seconds 30 --debug-services` prepares a separate service-manager profile from
 the original seven audio service definitions/dependencies, changing only CPU
 affinity and disabling lab board resets. It applies the approved ALSA adapter
 before starting that profile. This service probe is not yet verified; normal

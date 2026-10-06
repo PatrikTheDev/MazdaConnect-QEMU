@@ -128,7 +128,7 @@ just test
 ```
 
 These run unit tests for integrity/archive handling and orchestration, shell
-checks, a tracked-file publication guard, and ARM userspace/QEMU initialization
+checks, a working-tree and history publication guard, and ARM userspace/QEMU initialization
 smoke checks. They do not claim the Mazda UI boots.
 
 After setup, `just verify` checks real compositor pixels and translation

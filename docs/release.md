@@ -8,7 +8,8 @@ work, not independently obtained proprietary inputs. See [THIRD_PARTY](../THIRD_
 
 1. Run `just tools reference` and `just test`. Review staged files and the diff.
    The publication guard checks tracked working-tree files for binary content,
-   private-key headers, and generated-data paths. It is not an exhaustive secret
+   private-key headers, and generated-data paths, plus reachable history for binary
+   blobs and private-key headers. It is not an exhaustive secret
    scanner, history audit, or provenance/legal review.
 2. Inspect reachable Git history for accidental firmware or secrets when adding
    branches or importing external work. Ignoring a file does not remove old Git

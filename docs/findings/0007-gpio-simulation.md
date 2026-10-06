@@ -71,7 +71,7 @@ because the generic board has no matching temperature sensor. In the first GPIO
 run MMUI eventually failed its GUI health check. These failures remain visible;
 no display-success replies or normal-mode events have been injected.
 
-The bounded `software-lvds-probe` adds a real VirtIO framebuffer and traces the
+The bounded `just probe --probe-lvds --seconds 20 --debug-services` adds a real VirtIO framebuffer and traces the
 original `lvds_service`. It opens `/dev/fb0`, but its vendor contrast ioctl
 `0x40844628` returns `ENOTTY`. It also attempts the missing
 `/sys/class/gpio/LVDS Mode Select` line and `/dev/ttymxc0` display UART. The probe
