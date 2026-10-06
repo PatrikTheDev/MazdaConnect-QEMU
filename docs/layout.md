@@ -5,13 +5,15 @@
 | docker/ | Pinned tool environment |
 | scripts/firmware/ | Acquisition, verification and extraction |
 | scripts/guest/ | Guest assembly and execution |
+| scripts/software/, src/software/ | Software rendering, simulated devices, local patch builders and diagnostics |
+| scripts/release/ | Source publication checks |
 | scripts/vehicle/ | Explicitly invoked read-only vehicle collection |
 | config/firmware/ | Generic inventory template and per-package provenance |
 | config/qemu/ | QEMU machine profiles |
-| config/kernel/ | Future pinned kernel source/configuration |
+| config/kernel/ | Pinned reference kernel metadata; custom build in scripts/software/build_kernel.py |
 | patches/rootfs/VERSION/ | Ordered text changes to original files |
 | patches/kernel/, patches/qemu/ | Patches against pinned upstream revisions |
-| overlays/common/, overlays/PROFILE/ | New files we own |
+| overlays/lab/, overlays/software/ | Guest launchers, test pages and lab service configuration |
 | src/shims/, src/services/ | Future compatibility implementations |
 | tests/ | Meaningful integrity and execution checks |
 | docs/findings/, docs/decisions/ | Evidence and architectural decisions |

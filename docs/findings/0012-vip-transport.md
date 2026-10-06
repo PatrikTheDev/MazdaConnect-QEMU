@@ -23,7 +23,7 @@ The backend transport header is a lab API, not a Mazda wire format. The actual
 VIP framing, handshake, acknowledgments, and application messages still need a
 stateful model. Registering these devices alone does not establish TAU readiness.
 
-`just software-vip-test` exercises byte exchange through spidev, response timeouts,
+`just probe --verify-vip --seconds 5` exercises byte exchange through spidev, response timeouts,
 stale replies, exclusive backend ownership, actual signal delivery, and cleanup.
 It repeats the check after unloading and reloading the module.
 
@@ -42,7 +42,7 @@ reload, in `/software/test-m9tqz99a`. Original VIM then reported successful
 `SPI_Init`, `VIMGPIO_Init`, and `VIPBUS_init` in `/software/test-v699hzpz`, reaching
 `IUC_Start`. No VIP protocol backend was present in that run. `just test` passed.
 
-`just software-vim-probe` now also runs a bounded capture backend. Once VIM
+`just probe --probe-vim --seconds 10 --debug-services` now also runs a bounded capture backend. Once VIM
 registers its IRQ target, this diagnostic raises one explicitly logged interrupt
 and captures TX bytes to the retained `vip-trace.log`; it sends no responses.
 The normal live boot does not launch this diagnostic backend or inject its IRQ.

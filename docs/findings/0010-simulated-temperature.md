@@ -15,8 +15,8 @@ QEMU guest at a critical trip.
 Start the live viewer with chosen values:
 
 ```sh
-just software-boot --temperature 35000 --trip-temperature 90000
-just software-view
+just dev software task boot --temperature 35000 --trip-temperature 90000
+just view
 ```
 
 `software-run` accepts the same options after rebuilding the guest once. The
@@ -30,13 +30,13 @@ cat /sys/devices/virtual/thermal/thermal_zone0/temp
 echo 25000 > /sys/module/mazda_gpio/parameters/temperature
 ```
 
-`just software-thermal-test` checks live reads, bounds, the threshold, and module
+`just probe --verify-gpio --verify-thermal --seconds 35 --debug-services` checks live reads, bounds, the threshold, and module
 unload/reload. It starts the original services at 25°C, requires no overheating
 event before a logged injection, then sets 105°C and requires the original
 `SYSTEM_SMM_OVER_TEMPERATURE_EVENT`. It restores 25°C before shutdown. This verifies
 thermal behavior; it does not claim that the original UI or audio stack is ready.
 
-Verification on 2026-09-09: `just software-thermal-test` passed with two successful
+Verification on 2026-09-09: `just probe --verify-gpio --verify-thermal --seconds 35 --debug-services` passed with two successful
 sysfs/lifecycle checks, no overheating before injection, and the original firmware
 over-temperature event afterward. `just test` also passed. TAU/audio readiness is
 still outstanding; normal original-UI startup is not complete.

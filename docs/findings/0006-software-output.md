@@ -6,7 +6,7 @@ is mounted read-only at `/lab`. It does not depend on the separate Vivante work.
 
 ## Verified milestone
 
-`just software-test` boots the original rootfs with the mounted resource disk,
+`just dev software task test` boots the original rootfs with the mounted resource disk,
 loads the original Winston compositor and IVI plugin, and adds the lab CPU output
 plugin. A real Wayland client submits an 800×480 XRGB8888 shared-memory buffer.
 The test checks every output pixel against four color bars and requires a frame
@@ -62,12 +62,12 @@ stays in `system.IntroAnimation` after video playback. The vendor WebSocket Java
 not a function; its helper is declared globally but called as an instance method.
 No firmware JavaScript has been patched.
 
-`just software-opera-test` currently captures a bounded diagnostic run and exits
+`just probe` currently captures a bounded diagnostic run and exits
 nonzero to avoid claiming successful UI startup. Supporting
 services, browser startup, rendering correctness, and interactive output remain
 under investigation.
 
-Use `just software-opera-test --test-page --inspect-surface` for the controlled
+Use `just probe --test-page --inspect-surface` for the controlled
 browser page, or omit `--test-page` to exercise the Mazda GUI. The separate visible
 capture is `artifacts/software-visible.ppm`; `software-buffer.ppm` records uploaded
 buffer RGB independently of compositor visibility and alpha.
@@ -96,7 +96,7 @@ events to MMUI. `UIA_SYSTEM_OnFinishIntroAnimation` executes and reports that th
 intro is finished. Absence of these messages at Info level was a logging filter,
 not a failed subscription.
 
-`just software-video-test` requires complete decoding, multiple distinct visible
+`just probe --seconds 60 --debug-services --capture-sequence --verify-video` requires complete decoding, multiple distinct visible
 compositor captures, MMUI completion, and clean guest shutdown. It tests the video
 milestone only. `--capture-sequence` records frames every five seconds;
 `--debug-services` enables the firmware's supported Debug logging in the guest.
@@ -123,11 +123,11 @@ original system service. That module is separate from the viewer milestone.
 
 ## Continuous VNC viewer
 
-Run `just software-boot --renderer llvmpipe --intro-race-fix` to build and start
+Run `just dev software task boot --renderer llvmpipe --intro-race-fix` to build and start
 the original UI with the [documented opt-in startup fix](0016-intro-race-fix.md).
 The earlier sections record intermediate investigation results; the linked
 finding includes verified HomeScreen and Settings interaction. In another
-terminal, run `just software-view` to open macOS Screen Sharing at
+terminal, run `just view` to open macOS Screen Sharing at
 `vnc://127.0.0.1:5901`. QEMU starts its VNC server before guest startup; the default
 five-second service delay allows time to connect. Use `--start-delay 20` if needed.
 
@@ -142,13 +142,13 @@ client; this public lab credential is not intended for remote exposure.
 
 Useful recipes:
 
-- `just software-run --renderer llvmpipe --intro-race-fix`: restart the working UI configuration without rebuilding.
-- `just software-stop`: cleanly shut down the foreground guest from another terminal.
-- `just software-status`: inspect the QEMU state and connected VNC clients.
-- `just software-capture`: save the current scanout as `artifacts/software-live.png`.
-- `just software-boot --test-page`: show the controlled browser page.
-- `just software-boot --renderer llvmpipe --intro-race-fix --seconds 90 --start-delay 0`: bounded original-UI startup.
-- `just software-vnc-test`: verify RFB updates, desktop size, exact colors and text.
+- `just dev software task run --renderer llvmpipe --intro-race-fix`: restart the working UI configuration without rebuilding.
+- `just stop`: cleanly shut down the foreground guest from another terminal.
+- `just status`: inspect the QEMU state and connected VNC clients.
+- `just capture`: save the current scanout as `artifacts/software-live.png`.
+- `just dev software task boot --test-page`: show the controlled browser page.
+- `just dev software task boot --renderer llvmpipe --intro-race-fix --seconds 90 --start-delay 0`: bounded original-UI startup.
+- `just dev software task vnc`: verify RFB updates, desktop size, exact colors and text.
 
 Ctrl-C also shuts down the guest. Live logs are saved under `runs/software-live*`
 and the diagnostic disk is retained in `/software/live-*`. Service startup is
@@ -165,9 +165,9 @@ been added; see [current display-control findings](0008-software-display-control
 
 ## Commands and artifacts
 
-Run `just software-image`, `just software-prepare`, then `just software-test`.
+Run `just tools software`, `just dev software prepare`, then `just dev software task test`.
 The reference firmware, kernel, resources disk and guest must already exist.
-`just software-opera-test` adds the private runtime for browser experiments.
+`just probe` adds the private runtime for browser experiments.
 
 Logs are written to `runs/software-test.log`; frames to
 `artifacts/software-pattern.ppm` or `artifacts/software-opera.ppm`. Each run retains

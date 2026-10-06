@@ -22,11 +22,11 @@ and callback rules are unchanged; no vendor binary or animation deadline is
 patched.
 
 ```sh
-just software-draw-test --kernel-profile vmsplit2g
-just software-draw-probe --seconds 90
-just software-frame-profile --kernel-profile vmsplit2g --trace-transitions --seconds 90
+just dev software task test --verify-draw --kernel-profile vmsplit2g
+just probe --audio-devices --audio-services --probe-vip-service --live-output --seconds 90 --debug-services --capture-sequence --renderer llvmpipe --intro-race-fix --time-services --time-deadline-fix --websockets-queue-fix --kernel-profile vmsplit2g --verify-draw --seconds 90
+just probe --audio-devices --audio-services --probe-vip-service --live-output --seconds 90 --debug-services --capture-sequence --renderer llvmpipe --intro-race-fix --time-services --time-deadline-fix --websockets-queue-fix --profile-frames --kernel-profile vmsplit2g --trace-transitions --seconds 90
 # Compare with the retained original per-pixel implementation:
-just software-frame-profile --kernel-profile vmsplit2g --trace-transitions --reference-draw --seconds 90
+just probe --audio-devices --audio-services --probe-vip-service --live-output --seconds 90 --debug-services --capture-sequence --renderer llvmpipe --intro-race-fix --time-services --time-deadline-fix --websockets-queue-fix --profile-frames --kernel-profile vmsplit2g --trace-transitions --reference-draw --seconds 90
 ```
 
 `--verify-draw` compares local coordinates and inclusion against original
@@ -65,7 +65,7 @@ browser's late incoming animation.
 
 ## Nonzero positioning coverage
 
-`just software-draw-position-test --verify-draw` uses the original browser's static test page
+`just probe --kernel-profile vmsplit2g --test-page --inspect-surface --renderer llvmpipe --probe-draw-positions --seconds 10 --verify-draw` uses the original browser's static test page
 and stock `ivi-shell -p` to request positive (40,25) and negative (-30,-20)
 pixel translations. It retains each PPM and checks every pixel against a
 shifted baseline, including black outside the viewport. This is distinct from
@@ -92,7 +92,7 @@ transforms, clipping and fractional positions as well as ordinary startup.
 contract.
 
 The explicit original-path replay
-`just software-draw-position-test --reference-draw` also failed in retained run
+`just probe --kernel-profile vmsplit2g --test-page --inspect-surface --renderer llvmpipe --probe-draw-positions --seconds 10 --reference-draw` also failed in retained run
 `/software/test-4kpco4lr`. This confirms the positioning failure is present
 without the fast path.
 
@@ -108,8 +108,8 @@ these stages remain reportable. Tracing is still opt-in; normal capture format,
 frequency, atomic rename and callback ordering are unchanged.
 
 ```sh
-just software-frame-profile --kernel-profile vmsplit2g --trace-transitions --seconds 90
-just software-frame-report /software/test-f8p2ykzt
+just probe --audio-devices --audio-services --probe-vip-service --live-output --seconds 90 --debug-services --capture-sequence --renderer llvmpipe --intro-race-fix --time-services --time-deadline-fix --websockets-queue-fix --profile-frames --kernel-profile vmsplit2g --trace-transitions --seconds 90
+just dev software frame_report /software/test-f8p2ykzt
 ```
 
 The run retained 95 complete frames. Median conversion was 13.85 ms,

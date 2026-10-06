@@ -7,11 +7,11 @@ CPSR. It stays within the PC's recorded mapping and detaches afterward. No
 registers or guest memory are modified. Default worker sampling remains off.
 
 ```sh
-just software-worker-probe
-just software-thread-report /software/test-adgaofn4 --first 31 --last 46
-just software-worker-code /software/test-adgaofn4 35 659
-just software-worker-code /software/test-adgaofn4 39 659
-just software-worker-code /software/test-adgaofn4 42 659
+just probe --audio-devices --audio-services --probe-vip-service --live-output --seconds 90 --debug-services --capture-sequence --renderer llvmpipe --intro-race-fix --time-services --time-deadline-fix --websockets-queue-fix --trace-transitions --sample-render --sample-workers --seconds 90
+just dev software thread_report /software/test-adgaofn4 --first 31 --last 46
+just dev software worker_code /software/test-adgaofn4 35 659
+just dev software worker_code /software/test-adgaofn4 39 659
+just dev software worker_code /software/test-adgaofn4 42 659
 ```
 
 The disassembly recipe requires a captured instruction window and rejects
@@ -66,10 +66,10 @@ behavior and distinguish actual shader cost from sampling/emulation effects.
 ## Exact runtime rounding path and compatibility check
 
 ```sh
-just software-inspect /software/runtime-tree/libm.so.6 0x3d184 0x3d2c0
-just software-inspect /software/runtime-tree/libm.so.6 0x4c800 0x4c890
-just software-inspect /software/runtime-tree/libm.so.6 0x82b4 0x8370
-just software-rounding-check
+just dev software inspect_abi /software/runtime-tree/libm.so.6 0x3d184 0x3d2c0
+just dev software inspect_abi /software/runtime-tree/libm.so.6 0x4c800 0x4c890
+just dev software inspect_abi /software/runtime-tree/libm.so.6 0x82b4 0x8370
+just dev software check_rounding
 ```
 
 For small nonintegral inputs, the installed `nearbyintf` calls `feholdexcept`
@@ -112,9 +112,9 @@ instructions, and further investigation must preserve rounding semantics.
 ## Full-system check and the observed raster rounding mode
 
 ```sh
-just software-worker-rounding-probe
-just software-rounding-report /software/test-2rhdkvns
-just software-thread-report /software/test-2rhdkvns --first 31 --last 45
+just probe --audio-devices --audio-services --probe-vip-service --live-output --seconds 90 --debug-services --capture-sequence --renderer llvmpipe --intro-race-fix --time-services --time-deadline-fix --websockets-queue-fix --trace-transitions --sample-render --sample-workers --seconds 90 --probe-rounding
+just dev software check_rounding /software/test-2rhdkvns
+just dev software thread_report /software/test-2rhdkvns --first 31 --last 45
 ```
 
 The full-system probe adds an independent `rounding-check` process after the

@@ -48,15 +48,15 @@ Use these only in the disposable lab guest. Original firmware files are unchange
 
 ## Build and verification
 
-`just software-image` installs exact-version target headers and native build
+`just tools software` installs exact-version target headers and native build
 helpers from the pinned Debian snapshot. ARM header archives are unpacked into a
 staging directory and only their `/usr/src` contents are installed, preserving
 the container's merged `/usr` links. The reference kernel volume remains read-only.
 
-- `just software-gpio-build`: compile the module independently of an active viewer.
-- `just software-gpio-test`: build and boot the overlay, test edge/value behavior,
+- `just dev software build_gpio`: compile the module independently of an active viewer.
+- `just probe --verify-gpio --seconds 60 --debug-services --capture-sequence`: build and boot the overlay, test edge/value behavior,
   then check that the original system service reports STARTED.
-- `just software-lvds-probe`: diagnose the next display-service dependency with
+- `just probe --probe-lvds --seconds 20 --debug-services`: diagnose the next display-service dependency with
   an actual VirtIO framebuffer. This is a diagnostic run, not a passing UI test.
 
 The GPIO integration test passed on 2026-09-09. It checks rising and both-edge

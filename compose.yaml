@@ -19,3 +19,4 @@ services:
       FIRMWARE_ZIP_PASSWORD: ${FIRMWARE_ZIP_PASSWORD:-}
 volumes:
   lab-data:
+    name: ${MAZDA_REFERENCE_VOLUME:-mazda-qemu_lab-data}

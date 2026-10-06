@@ -8,9 +8,9 @@ continue decoding and publishing the signal through their normal interfaces.
 The simulated device state is configurable:
 
 ```sh
-just software-vip-probe --tau-state connected
-just software-vip-probe --tau-state standby
-just software-vip-probe --tau-state disconnected
+just probe --probe-vip-service --seconds 20 --debug-services --tau-state connected
+just probe --probe-vip-service --seconds 20 --debug-services --tau-state standby
+just probe --probe-vip-service --seconds 20 --debug-services --tau-state disconnected
 ```
 
 Values follow the vendor diagnostic: standby=0, connected=1, disconnected=2.
@@ -27,7 +27,7 @@ Original-binary probe `/software/test-6noztxo2` confirmed the selective field:
 VBS logged connection state 1, the radio module stopped its TAU request timer,
 and the system logged `Tau is connected!`. The next explicit dependency is
 `Still waiting for audio manager to get running...`. This is not complete UI
-startup. `just software-tau-test [state]` now checks original decoding and rejects
+startup. `just probe --probe-vip-service --verify-tau --tau-state {{state}} --seconds 20 --debug-services connected [state]` now checks original decoding and rejects
 connected notifications for standby/disconnected configurations.
 
 The disconnected integration test passed in `/software/test-_78bl3p6`: original

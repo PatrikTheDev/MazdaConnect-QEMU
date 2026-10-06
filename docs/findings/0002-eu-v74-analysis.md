@@ -74,7 +74,7 @@ Do not invent a stock init sequence from the tar alone.
 
 ## Execution result
 
-`just firmware-probe config/firmware/cmu150-eu-74.00.324A.json` successfully executed
+`just dev firmware probe config/firmware/cmu150-eu-74.00.324A.json` successfully executed
 the original BusyBox echo and help commands through qemu-arm. It used only the
 original BusyBox, loader, libc, libm and their original library symlinks in a
 disposable directory. No binary patches or host-library substitutions were needed.
@@ -84,9 +84,10 @@ prove original-kernel boot, service startup, graphics compatibility or UI render
 
 ## Reproduce and inspect
 
-Use the manifest in `config/firmware/cmu150-eu-74.00.324A.json` with the `just`
-firmware-fetch/import, firmware-inspect, firmware-extract, firmware-analyze and
-firmware-probe recipes. Supply the published ZIP password for extraction.
+Use `just setup artifacts/cmu150_EU_74.00.324A_update.up` for the complete local
+workflow. Individual steps remain available as `just dev firmware manage`,
+`just dev firmware analyze`, and `just dev firmware probe`; see
+[research commands](../research.md). Supply the published ZIP password for extraction.
 
 Host artifacts:
 

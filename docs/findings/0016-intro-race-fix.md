@@ -28,13 +28,13 @@ websocket defects remain unpatched.
 
 ## Reproduction
 
-* `just software-intro-fix-test`: execute the actual patch assembly under ARM
+* `just dev software check_intro_fix`: execute the actual patch assembly under ARM
   emulation, checking five-argument forwarding, return-value preservation,
   original context-call execution, and positive/negative state conditions.
-* `just software-intro-fix-probe`: boot original UI and services with llvmpipe,
+* `just probe --audio-devices --audio-services --probe-vip-service --live-output --seconds 90 --debug-services --capture-sequence --renderer llvmpipe --intro-race-fix`: boot original UI and services with llvmpipe,
   the patch and startup diagnostics.
-* `just software-boot --renderer llvmpipe --intro-race-fix`: opt in for the live
-  VNC viewer; connect with `just software-view`.
+* `just dev software task boot --renderer llvmpipe --intro-race-fix`: opt in for the live
+  VNC viewer; connect with `just view`.
 * Omit `--intro-race-fix` to retain stock MMUI behavior in a fresh guest.
 
 ## Binary handling
@@ -71,10 +71,10 @@ still occur, and menu interaction needs separate verification; this result
 does not establish that all supporting services or UI functions are complete.
 
 The subsequent live run `/software/live-m0zcw1xt` used
-`just software-boot --renderer llvmpipe --intro-race-fix --seconds 180`.
-The VNC framebuffer showed the original HomeScreen. `just software-key right`
+`just dev software task boot --renderer llvmpipe --intro-race-fix --seconds 180`.
+The VNC framebuffer showed the original HomeScreen. `just key right`
 moved its selection from Communication to Navigation; a second right followed
-by `just software-key ret` opened the original Settings/Display screen. The
+by `just key ret` opened the original Settings/Display screen. The
 Settings screenshot is retained locally as `artifacts/software-settings-verified.png`.
 The bounded shutdown occurred before a return-to-home capture, so that action
 is not verified. The status clock still reads 00:00 and websocket exceptions

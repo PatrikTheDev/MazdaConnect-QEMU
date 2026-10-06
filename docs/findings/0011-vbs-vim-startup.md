@@ -1,8 +1,8 @@
 # Original VBS and VIM startup
 
 The software service-manager configuration now starts original `jciVBS` with its
-stock `settings` dependency. `just software-vbs-probe` captures its startup;
-`just software-vim-probe` additionally runs a bounded syscall trace of original
+stock `settings` dependency. `just probe --seconds 20 --debug-services` captures its startup;
+`just probe --probe-vim --seconds 10 --debug-services` additionally runs a bounded syscall trace of original
 `/jci/vim/vim_app`. These diagnostics deliberately do not assert UI readiness.
 
 The system service's `VbsRadioProxy` binds the stock radio interface and calls
@@ -43,12 +43,12 @@ Good`, `Reverse`, `DO_USB_PWR_EN`, `CAN Inhibit Sense`, `CAN_Day_Mode`,
 
 This does not yet provide SPI/VIP communication or TAU readiness.
 
-Verification on 2026-09-09: `just software-gpio-test` passed command validation,
+Verification on 2026-09-09: `just probe --verify-gpio --seconds 60 --debug-services --capture-sequence` passed command validation,
 input IRQs, output poll notifications, module unload/reload, original system
 startup, and the parked reverse-state check. `just test` passed all 13 unit tests,
 shell checks, and ARM/QEMU smoke checks.
 
-The subsequent `just software-vim-probe` opened `gpiochip224/vim` successfully.
+The subsequent `just probe --probe-vim --seconds 10 --debug-services` opened `gpiochip224/vim` successfully.
 The original GPIO read-handler thread started and read all seven monitored lines,
 including Power Hold and Normal Mode at 1 as set by the original system service.
 VIM then attempted `/dev/spidev1.0` ten times, each returning `ENOENT`. This is the

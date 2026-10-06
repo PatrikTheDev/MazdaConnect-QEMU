@@ -5,7 +5,7 @@ Validation platform: Linux ARM64 container with Docker Compose.
 Passed:
 
 - `just doctor`: runtime access and Compose configuration.
-- `just image-build`: pinned Debian base and snapshot packages built successfully.
+- `just tools reference`: pinned Debian base and snapshot packages built successfully.
 - `just test`: six Python tests, ShellCheck, a statically linked ARM probe executed
   through qemu-arm, and full-system QEMU virt-7.2 initialization queried over QMP.
 

@@ -39,10 +39,10 @@ The run retains `websockets-queue-fix.json` identifying the generated artifact.
 ## Reproduction
 
 ```sh
-just software-websockets-fix-test
-just software-websockets-fix-probe --seconds 90
-just software-boot --renderer llvmpipe --intro-race-fix --time-deadline-fix --websockets-queue-fix
-just software-view
+just probe --renderer llvmpipe --probe-websockets --websockets-queue-fix --inspect-surface --seconds 20
+just probe --audio-devices --audio-services --probe-vip-service --live-output --seconds 90 --debug-services --capture-sequence --renderer llvmpipe --intro-race-fix --time-services --time-deadline-fix --websockets-queue-fix --seconds 90
+just dev software task boot --renderer llvmpipe --intro-race-fix --time-deadline-fix --websockets-queue-fix
+just view
 ```
 
 The runtime test loads the generated firmware JavaScript in original Opera.
@@ -82,5 +82,5 @@ The comparison run `/software/live-ka1baueo` opened Settings and displayed a
 clock advancing from 23:35 to 23:36. Escape did not navigate back. Inspection
 of original `common/js/Multicontroller.js` explains why: Back is **Backspace**
 (keycode 8), while M/N are clockwise/counterclockwise rotary events.
-`just software-key` now accepts `backspace`, `m` and `n` in addition to the
+`just key` now accepts `backspace`, `m` and `n` in addition to the
 previous keys. No firmware keyboard mapping is changed.

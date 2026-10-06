@@ -1,164 +1,163 @@
 # Mazda Connect QEMU lab
 
-Research workspace for running Mazda Connect firmware in QEMU. The current
-reference package is CMU150 EU 74.00.324A.
+Run the original Mazda Connect intro, disclaimer, home menu, and Settings UI in
+an ARM QEMU guest with software rendering and a live VNC display. This is an
+experimental interoperability project for **CMU150 EU 74.00.324A**, not a complete
+vehicle simulator or a firmware flashing tool.
 
-This base provides repeatable Linux tooling, verified package storage, outer ZIP
-extraction, a QEMU launch profile, and a read-only vehicle inventory script.
-EU 74.00.324A has now been acquired and analyzed; its original BusyBox runs under
-QEMU user-mode with its original libraries. A full-system QEMU guest now also boots
-the Mazda rootfs using a pinned generic kernel. The software-rendering lab runs
-the original intro, disclaimer, home menu and Settings screen over VNC, with
-verified keyboard navigation. This currently requires llvmpipe and an explicit
-[documented intro race fix](docs/findings/0016-intro-race-fix.md). It is not a
-complete vehicle simulation; further service integration remains under
-investigation. The optional queue fix below removes the observed websocket
-exceptions in the verified startup and Settings navigation sequence. See [firmware findings](docs/findings/0002-eu-v74-analysis.md)
-and [boot instructions](docs/guest.md).
+The repository contains source, integration scripts, configuration, and research
+notes. **Bring your own firmware.** Firmware packages, vendor binaries, UI assets,
+and generated guest images are not distributed here.
 
-## Start
+## Requirements
 
-Install Git, just, and a Docker runtime with Compose. No host Python, QEMU,
-compiler, or privileged container is needed.
+- Git, [just](https://just.systems/), and Docker with Compose v2 using Linux containers.
+- A VNC client. macOS Screen Sharing works with `just view`; on other systems,
+  connect a client manually to `127.0.0.1:5901`.
+- The exact `cmu150_EU_74.00.324A_update.up` package and its ZIP password, obtained
+  independently with permission to use them. The archive password is documented in
+  [published research](https://kyprizel.net/work/mazda-cmu-fun.pdf), slide 22; it
+  is not a vehicle login credential.
+- Plan for at least 30 GiB free in Docker storage and 8 GiB RAM allocated to Docker.
+  These are practical starting budgets, not measured minimum requirements. Kernel
+  compilation uses four workers; the running guest uses 1.5 GiB RAM.
+
+The software UI has been exercised on Apple Silicon macOS with a Linux ARM64
+Docker runtime. The CI configuration targets Linux AMD64 tooling; the full
+UI on other hosts remains unverified. Host QEMU, Python, cross-compilers, GPU
+passthrough, KVM, and privileged containers are not required. The guest uses TCG;
+expect slower startup and animation than a real vehicle.
+
+## First setup
+
+Clone this repository and enter its directory. Place your firmware package
+**directly in `artifacts/`**. Setup checks it against the supported manifest:
+
+| Property | Required value |
+| --- | --- |
+| Region / version | EU / 74.00.324A |
+| Size | 2,432,208,800 bytes |
+| SHA-256 | `3a506745c4ae65c21e0427714f377a4765b92e339cdbd6bf1b91ec398bb1a963` |
+
+The hash identifies the research input. Community checksum corroboration does
+not establish a trusted Mazda signing chain. Other versions or regions need ABI
+and patch validation; changing a manifest alone does not add support.
+
+Provide the password through your shell environment, or create an ignored `.env`
+file at the repository root containing `FIRMWARE_ZIP_PASSWORD=...`. Do not commit
+that file or paste the password into issue reports.
 
 ```sh
 just doctor
-just image-build
+just setup artifacts/cmu150_EU_74.00.324A_update.up
+just start
+```
+
+`setup` builds the pinned tooling images, verifies and imports your package,
+extracts and analyzes it, reconstructs the resources disk and reference guest,
+prepares the software runtime, compiles the 2 GiB userspace kernel and matching
+modules, and builds the UI guest. Initial compilation can take a while. No rooted
+vehicle is needed. Setup never downloads Mazda firmware or runs its updater.
+Repeated setup verifies the input and reuses an existing atomic outer extraction;
+it does not remove lab data.
+
+In another terminal:
+
+```sh
+just view
+```
+
+The VNC password is **`mazda`**, a public lab password. The endpoint binds only to
+host loopback. Use the arrow keys and Enter, Backspace for Back, and `m` / `n` for
+clockwise / counterclockwise rotary input. For scripted interaction:
+
+```sh
+just key right
+just key ret
+just capture
+just status
+just stop
+```
+
+Ctrl-C in the boot terminal also shuts down the guest and retains logs. Restart
+without compiling with `just restart`. Run `just build` after changing build inputs
+or tooling; `just start` rebuilds the guest overlay before booting.
+
+## What the default UI configuration changes
+
+`just start` and `just restart` explicitly select the built `vmsplit2g` kernel,
+Mesa llvmpipe, and three documented firmware corrections:
+
+- [Intro completion race](docs/findings/0016-intro-race-fix.md).
+- [Time-service deadline clock](docs/findings/0017-time-deadline-fix.md).
+- [WebSocket transition queue](docs/findings/0018-websockets-queue-fix.md).
+
+These corrections are applied to separate generated outputs; the reference
+package remains unchanged. The lower-level research runner keeps them opt-in.
+The [kernel configuration](docs/findings/0027-two-gib-kernel-profile.md) matches
+original VBS pointer expectations. Source and dependency hashes are pinned;
+fresh kernel builds may differ because private signing keys are generated locally.
+
+The lab supplies GPIO and VIP/SPI devices for original VIM, a configurable thermal
+sensor, a software display-control service, an intro-video player, and an HDA audio
+adapter. Original Mazda libraries and Opera render the UI through the software
+compositor adapter. Examples:
+
+```sh
+just start --temperature 30000 --trip-temperature 95000
+just start --microphone-tone 700 --record-audio
+```
+
+Temperature values are millidegrees Celsius. Microphone input defaults to silence;
+there is no host microphone capture. HDA capture gain has a documented lab mapping,
+not the original vehicle codec calibration.
+
+Home and Settings navigation have been verified. Some animation watchdog timeouts
+remain, and VIP application responses and vehicle state coverage are incomplete.
+Navigation, radio reception, Bluetooth device integration, and complete vehicle
+behavior are not validated. Vivante GPU emulation is separate research and is not
+required for this software path. See the [latest rendering evidence](docs/findings/0029-winston-fixed-point-coordinates.md).
+
+## Tests and research
+
+Firmware-free checks, suitable for public CI:
+
+```sh
+just tools reference
 just test
-just shell
 ```
 
-With the verified firmware already analyzed in the lab volume, run
-`just kernel-fetch`, `just firmware-resources`, `just resources-disk`,
-`just guest-build`, and `just boot` to open the Mazda userspace shell in QEMU.
-`just guest-test` performs a bounded boot/command/poweroff check.
-`just firmware-resources` reconstructs and checks all 901 separate resource files.
-`just resources-disk` builds their read-only ext4 disk; rebuild the guest afterward.
-`just compositor` runs the original compositor headlessly with its IVI plugin.
-`just compositor-test` verifies actual Wayland client communication.
-The Vivante output path still requires an absent GPU device; see
-[the crash diagnosis](docs/findings/0005-mounted-resources-compositor.md).
+These run unit tests for integrity/archive handling and orchestration, shell
+checks, a tracked-file publication guard, and ARM userspace/QEMU initialization
+smoke checks. They do not claim the Mazda UI boots.
 
-For the original UI through the software-rendering path, after preparing the
-reference guest and resources:
+After setup, `just verify` checks real compositor pixels and translation
+coordinates. `just report /software/RETAINED-RUN` summarizes observed service
+states and errors. Use `just probe` for bounded browser experiments and
+`just dev SCOPE SCRIPT` for specialized analysis. Diagnostic runs can deliberately
+exit nonzero to require inspection; see [research commands](docs/research.md).
+`just --list` lists the small public command surface.
 
-```sh
-just software-image
-just software-prepare
-just software-boot --renderer llvmpipe --intro-race-fix
-```
+## Storage and publication
 
-In another terminal, run `just software-view` (VNC password: `mazda`). Use
-`just software-key right`, `just software-key ret` and `just software-capture`
-to navigate and capture the display. `just software-stop` stops the guest and
-retains diagnostics. The firmware patch is opt-in and does not alter the
-reference package. The separate Vivante work is not needed for this path.
+| Location | Contents | Public? |
+| --- | --- | --- |
+| Git | Source, scripts, configuration, patch procedures, sanitized notes | Yes |
+| `artifacts/`, `runs/` | Input packages, exported reports, images and logs | No; ignored |
+| `mazda-qemu_lab-data` Docker volume | Imported firmware, resources and reference guest | No |
+| `mazda-qemu-software_software-data` Docker volume | Extracted userspace, kernels, builds and retained runs | No |
 
-`just test` checks package integrity handling, archive traversal rejection,
-shell scripts, execution of a compiled ARM Linux probe through qemu-arm, and
-full-system ARM QEMU initialization through QMP. It does not test a Linux boot.
+The repository mounts read-only in containers, except `artifacts/` and `runs/`.
+Guest rootfs changes live in RAM; diagnostics persist in the private volumes.
+Do not use `docker compose down -v` unless you intend to delete lab data.
 
-The tooling image follows the host architecture. Its Debian base digest and APT
-snapshot are pinned; `just versions` prints the installed package versions.
-The included soft-float cross compiler is for lab probes. A Mazda-compatible
-toolchain must be selected after examining the actual firmware ABI and libc.
+Publish source-only releases. Do not upload firmware, generated initramfs files,
+resource/runtime disks, vendor libraries, exported volumes, or full modified Mazda
+applications through Git, Git LFS, Actions artifacts, or release attachments.
+The publication guard is a useful check, not an exhaustive secret/provenance audit.
+See [release procedure](docs/release.md), [third-party inputs](THIRD_PARTY.md),
+[contributing](CONTRIBUTING.md), and [layout](docs/layout.md).
 
-## Firmware workflow
-
-1. Copy `config/firmware/package.example.json` to a version-specific manifest.
-2. Record the exact version, region, source, expected size and SHA-256. An
-   observed local hash establishes identity, not independent authenticity;
-   record how it was obtained in `provenance`.
-3. Put a package in `artifacts/` and run:
-
-```sh
-just firmware-import config/firmware/YOUR-PACKAGE.json artifacts/YOUR-PACKAGE.up
-just firmware-inspect config/firmware/YOUR-PACKAGE.json
-just firmware-extract config/firmware/YOUR-PACKAGE.json
-```
-
-Alternatively, set an HTTPS URL and use `just firmware-fetch MANIFEST`.
-The EU 74.00.324A manifest uses a public Yandex share and resolves a fresh download
-URL on each fetch; the stored SHA-256 remains fixed. This is a community mirror,
-not a Mazda-hosted distribution endpoint.
-The example manifest intentionally cannot be imported or fetched until completed.
-No unrelated regional image is selected automatically.
-
-Files are stored at `/lab/firmware/ID/` in the Docker volume, with `original.up`,
-its manifest, and an `outer/` extraction. Originals are write-protected and verified
-again before inspection/extraction. Inspection exports JSON to `artifacts/`.
-For an encrypted ZIP, provide `FIRMWARE_ZIP_PASSWORD` in your shell environment
-before running the recipe; it is passed to the extractor, not stored in Git.
-
-Extraction validates member paths and then uses native 7-Zip for efficient decryption.
-It only handles ordinary outer ZIP files (including a trailing signature).
-It rejects links, special files, duplicate paths and traversal. It does not execute
-update instructions, decrypt arbitrary formats, verify Mazda signatures, or unpack
-inner filesystem images. Directory ownership/timestamps are not reconstructed by
-this outer-package step.
-
-`just firmware-analyze config/firmware/cmu150-eu-74.00.324A.json` inventories
-decompressed payload types and the rootfs tar metadata, checks regular-file vendor
-MD5 records, and inspects selected ELF files with readelf. It also checks the package
-signature against the bundled publisher key, which does not establish a trusted
-Mazda certificate chain. Reports go to `artifacts/`; derived archives, instructions,
-and numbered samples remain in the Linux volume. It does not build a runnable rootfs
-or execute the vendor's updater.
-
-`just firmware-probe config/firmware/cmu150-eu-74.00.324A.json` runs the original
-BusyBox echo/help commands with its original loader, libc and libm. The minimal
-library prefix is disposable and is not a reconstructed vehicle rootfs.
-
-## Storage and changes
-
-- Git: scripts, configuration, ordered patches, overlay files, and research notes.
-- `artifacts/`: ignored input packages and exported reports/images.
-- `runs/`: ignored logs and disposable guest state.
-- Docker `lab-data` volume: Linux filesystems, extracted files and build caches.
-- Ghidra: run the UI natively; keep databases outside Git and export useful scripts/notes.
-
-The repository is mounted read-only in the container, except `artifacts/` and
-`runs/`. Make source edits on the host. Do not use `docker compose down -v` unless
-you intend to delete the lab data. Back it up before removing the Docker runtime.
-
-See [layout and patch rules](docs/layout.md), [guest setup](docs/guest.md),
-[vehicle collection](docs/vehicle.md), and [research sources](docs/sources.md).
-
-The separately approved time-service deadline correction is also opt-in:
-`just software-boot --renderer llvmpipe --intro-race-fix --time-deadline-fix`.
-It enables the original time services and corrects their semaphore deadline's
-clock domain. Both original time services now start, and the home screen displays
-the guest time; the full boot and minute callback have been verified.
-See [the time-service findings](docs/findings/0017-time-deadline-fix.md) for
-scope, hashes and diagnostic recipes.
-
-The approved [websocket queue correction](docs/findings/0018-websockets-queue-fix.md)
-is enabled with `--websockets-queue-fix`. Test it in the original browser with
-`just software-websockets-fix-test`. For original UI controls, use
-`just software-key backspace` for Back and `just software-key m` / `n` for
-clockwise / counterclockwise rotary input; Escape is not the UI Back control.
-
-Use `just software-health-report /software/<retained-run>` to inspect observed
-service states and frequent errors. The software launcher supplies the POSIX
-shared-memory mount required by the original vehicle database; see
-[validation and remaining issues](docs/findings/0019-posix-shared-memory.md).
-
-Original settings can adjust HDA microphone capture gain through `MIC Level`.
-Run `just software-mic-gain-test` to verify actual captured audio at full and
-half control settings. See the [gain mapping and calibration limitation](docs/findings/0022-hda-microphone-gain.md)
-before interpreting HDA's reported dB values.
-
-The opt-in 2 GiB userspace kernel matches the address boundary required by
-the original VBS monitor-pointer representation. Build it once with
-`just software-kernel-build`, then check startup with `just software-kernel-probe`.
-For the live viewer, run:
-
-```sh
-just software-boot --kernel-profile vmsplit2g --renderer llvmpipe --intro-race-fix --time-deadline-fix --websockets-queue-fix
-```
-
-Stock remains the default for new builds. `just software-run` reuses the
-currently built profile. Audio can be checked with
-`just software-mic-gain-test --kernel-profile vmsplit2g`.
-See [kernel build and validation](docs/findings/0027-two-gib-kernel-profile.md)
-for matching-module checks, retained evidence and remaining animation delays.
+Original project code and documentation are **GPL-2.0-only**; see [LICENSE](LICENSE).
+External components retain their own licenses. This independent project is not
+endorsed by Mazda.

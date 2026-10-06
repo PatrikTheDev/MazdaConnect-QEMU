@@ -15,7 +15,7 @@ observed initialization failure.
 
 ## Validation
 
-`just software-websockets-fix-probe --seconds 90` produced
+`just probe --audio-devices --audio-services --probe-vip-service --live-output --seconds 90 --debug-services --capture-sequence --renderer llvmpipe --intro-race-fix --time-services --time-deadline-fix --websockets-queue-fix --seconds 90` produced
 `/software/test-s6x3oy2p`. Original VDM logged **11 successful SMDB opens**.
 Regenerative power and electrical load reads each logged 84 numeric results
 (initial zero values in this simulation). The run has zero semaphore creation
@@ -31,8 +31,8 @@ smoke checks).
 ## Repeatable audit and remaining issues
 
 ```sh
-just software-health-report /software/live-tqqhg2q2 --limit 10
-just software-health-report /software/test-s6x3oy2p --limit 10
+just report /software/live-tqqhg2q2 --limit 10
+just report /software/test-s6x3oy2p --limit 10
 ```
 
 This recipe reports observed service lifecycle states, selected failure markers

@@ -1,14 +1,19 @@
-# Boot the Mazda userspace lab
+# Reference shell and original boot-path research
+
+For the working software UI, use `just setup`, `just start`, and `just view` as
+documented in [README](../README.md). This page describes the lower-level stock
+kernel reference shell used during bring-up. It does not use the current 2 GiB
+software UI configuration.
 
 After importing, extracting and analyzing EU 74.00.324A:
 
 ```sh
-just kernel-fetch
-just firmware-resources
-just resources-disk
-just guest-build
-just guest-test
-just boot
+just dev reference kernel
+just dev firmware resources config/firmware/cmu150-eu-74.00.324A.json
+just dev reference resources_disk cmu150-eu-74.00.324A
+just dev reference build config/firmware/cmu150-eu-74.00.324A.json
+just dev reference check_boot config/qemu/eu-v74-lab.json
+just dev reference boot config/qemu/eu-v74-lab.json
 ```
 
 The default `eu-v74-lab.json` profile uses QEMU virt-7.2, Cortex-A15, TCG and
@@ -43,7 +48,7 @@ The guest lives in RAM; changes disappear at shutdown. To shut down:
 /bin/busybox poweroff -f
 ```
 
-`just guest-test` verifies kernel boot, the lab readiness marker, an original
+`just dev reference check_boot config/qemu/eu-v74-lab.json` verifies kernel boot, the lab readiness marker, an original
 BusyBox command, a mounted resource sample's content, and guest poweroff. Its
 serial log is `runs/eu-v74-boot.log`. The sample is SHA-256-verified on the host;
 the original BusyBox checks its derived MD5 because it has no SHA-256 applet.
@@ -51,7 +56,7 @@ the original BusyBox checks its derived MD5 because it has no SHA-256 applet.
 
 ## Debugging and graphics
 
-`just guest-graphics-probe` boots the lab guest, sets `WL_COMPOSITOR_CONFIG` to
+`just dev reference check_boot --probe config/qemu/eu-v74-lab.json` boots the lab guest, sets `WL_COMPOSITOR_CONFIG` to
 the vendor display configuration, and captures help, a main-thread syscall trace,
 and a core dump. It then verifies the original compositor using a lab headless
 configuration. The serial transcript is `runs/eu-v74-graphics-probe.log`, with
@@ -59,9 +64,9 @@ offline GDB results in `runs/eu-v74-compositor-gdb.log`. The diagnostic disk and
 symbol prefix remain in the volume; their locations and hashes are exported in
 `artifacts/cmu150-eu-74.00.324A.graphics-debug.json`.
 
-`just compositor` boots with the original compositor and IVI plugin running
+`just dev reference boot --compositor config/qemu/eu-v74-lab.json` boots with the original compositor and IVI plugin running
 headlessly. It opens `/tmp/lab-wayland/wayland-0`; logs go to
-`/tmp/lab-compositor.log`. `just compositor-test` checks registry discovery and a
+`/tmp/lab-compositor.log`. `just dev reference check_boot --compositor config/qemu/eu-v74-lab.json` checks registry discovery and a
 Wayland sync callback in this mode, then powers off. To verify it manually in
 the guest:
 
@@ -73,7 +78,7 @@ The headless mode advertises the original IVI interfaces but has zero outputs;
 it does not render the Mazda UI. The vendor Vivante path still fails because
 its GPU device is absent. See [the diagnosis](findings/0005-mounted-resources-compositor.md).
 
-`just debug` pauses at startup and exposes GDB on host localhost:1234. Use matching
+`just dev reference boot --debug config/qemu/eu-v74-lab.json` pauses at startup and exposes GDB on host localhost:1234. Use matching
 kernel symbols when debugging kernel code; the regular Debian image package does
 not supply a full unstripped vmlinux. Debug symbols are a separate future dependency.
 
@@ -89,7 +94,7 @@ Two simultaneous runs with service ports need different host port mappings.
 ## Original boot path
 
 ```sh
-just firmware-boot-inspect config/firmware/cmu150-eu-74.00.324A.json
+just dev firmware bootimage config/firmware/cmu150-eu-74.00.324A.json
 ```
 
 The decoder saves the original zImage, command line, compressed initramfs, native

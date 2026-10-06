@@ -8,9 +8,9 @@ the intro contains that image, and the global texture capture includes video.
 
 Two opt-in recipes collect evidence:
 
-* `just software-render-probe`: original browser syscall waits plus timestamps
+* `just probe --audio-devices --audio-services --probe-vip-service --live-output --trace-render --seconds 60 --debug-services --capture-sequence`: original browser syscall waits plus timestamps
   around software compositor scheduling, painting, display writes and callbacks.
-* `just software-render-sample`: briefly samples the browser main thread's ARM
+* `just probe --audio-devices --audio-services --probe-vip-service --live-output --sample-render --seconds 60 --debug-services --capture-sequence`: briefly samples the browser main thread's ARM
   registers/stack and records mappings, without rewriting registers. It cannot
   run together with syscall tracing because both use ptrace.
 
@@ -26,7 +26,7 @@ executable mapping was `b2808000-b39a8000`, with repeated sampled addresses near
 in libgcc. This points to expensive CPU rasterization on the ARMEL runtime as
 the immediate stall, rather than a thread sleeping on a traced kernel wait.
 
-`just software-ui-probe --no-hw-accel` tests the original browser's CPU-painting
+`just probe --audio-devices --audio-services --probe-vip-service --live-output --seconds 90 --debug-services --capture-sequence --no-hw-accel` tests the original browser's CPU-painting
 option through 90 seconds of startup, retaining five-second frame samples.
 Its result must be checked for actual rendering and watchdog/liveness behavior
 before changing the normal live path. No alternative UI implementation or
@@ -36,12 +36,12 @@ application-readiness reply has been substituted.
 
 The no-hardware-acceleration probe (`/software/test-eexqvvti`) still ended with
 the browser watchdog and a black framebuffer. With
-`just software-ui-probe --renderer llvmpipe` (`/software/test-6h0l0gd9`), Opera
+`just probe --audio-devices --audio-services --probe-vip-service --live-output --seconds 90 --debug-services --capture-sequence --renderer llvmpipe` (`/software/test-6h0l0gd9`), Opera
 remained alive through 90 seconds without a missed heartbeat, but the framebuffer
 was still black. The renderer option uses the installed Mesa driver with one
 worker thread; softpipe remains the default.
 
-`just software-ui-probe --renderer llvmpipe --inspect-buffer --inspect-surface --seconds 45`
+`just probe --audio-devices --audio-services --probe-vip-service --live-output --seconds 90 --debug-services --capture-sequence --renderer llvmpipe --inspect-buffer --inspect-surface --seconds 45`
 (`/software/test-igi1tjqs`) also remained black when the diagnostic explicitly
 set browser surface alpha to 255. Its uploaded-buffer image contains the five
 icons, but cannot be attributed to Opera rather than the intro player.
@@ -81,7 +81,7 @@ early disclaimer/late intro ordering a separate lead from the JavaScript
 exception. No synthetic disclaimer event or altered state transition has been
 introduced.
 
-`just software-ui-probe --renderer llvmpipe --browser-delay 0 --seconds 60`
+`just probe --audio-devices --audio-services --probe-vip-service --live-output --seconds 90 --debug-services --capture-sequence --renderer llvmpipe --browser-delay 0 --seconds 60`
 tests startup without the harness's fixed five-second browser delay. The
 default remains five seconds until the ordering investigation is resolved.
 The zero-delay run (`/software/test-muw55kg_`) kept Opera alive for 60 seconds
@@ -89,7 +89,7 @@ but still ended with a black framebuffer and MMUI in `IntroAnimation`.
 NormalState preceded the intro again, and the same JavaScript exception was
 present. Removing the fixed delay alone is therefore insufficient.
 
-Use `just software-startup-report /software/test-muw55kg_` to reproduce the
+Use `just dev software startup_report /software/test-muw55kg_` to reproduce the
 milestone ordering with exact firmware log lines and source line numbers. It
 also works on retained live-run directories and does not infer UI readiness.
 Both this probe and `/software/test-6h0l0gd9` show the same sequence: SM reports
@@ -116,7 +116,7 @@ The user subsequently approved the intro race fix. Its implementation and
 successful Disclaimer/HomeScreen transition are documented in
 [0016-intro-race-fix.md](0016-intro-race-fix.md).
 
-`just software-websockets-probe` loads the unmodified Websockets.js into a
+`just probe --renderer llvmpipe --probe-websockets --inspect-surface --seconds 20` loads the unmodified Websockets.js into a
 standalone diagnostic page in the original Opera runtime. The observed result
 in `/software/test-hnzuiho7` confirms an undefined `_isStack` method and a false
 lookup for a queued transition. However, this old runtime exposes both

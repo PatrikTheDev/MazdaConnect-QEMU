@@ -40,13 +40,13 @@ policy. Existing default profiles stay unchanged.
 ## Reproduction and validation
 
 ```sh
-just software-time-fix-test
-just software-time-fix-probe --seconds 90
+just dev software check_time_fix
+just probe --audio-devices --audio-services --probe-vip-service --live-output --seconds 90 --debug-services --capture-sequence --renderer llvmpipe --intro-race-fix --time-services --time-deadline-fix --seconds 90
 # Live viewer after the current guest is stopped:
-just software-boot --renderer llvmpipe --intro-race-fix --time-deadline-fix
-just software-view
+just dev software task boot --renderer llvmpipe --intro-race-fix --time-deadline-fix
+just view
 # Unpatched comparison:
-just software-time-probe --seconds 90
+just probe --audio-devices --audio-services --probe-vip-service --live-output --seconds 90 --debug-services --capture-sequence --renderer llvmpipe --intro-race-fix --time-services --seconds 90
 ```
 
 `software-time-fix-test` passed against the actual firmware: exactly one byte

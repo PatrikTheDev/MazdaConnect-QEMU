@@ -47,7 +47,7 @@ def main():
     subprocess.run(['mkfs.ext4', '-q', '-F', '-L', 'MAZDA_SOFTWARE', str(disk)], check=True)
     profile = json.loads(Path('/software/guest/profile.json').read_text())
     if not profile.get('software_opera'):
-        raise SystemExit('The current guest lacks the Opera overlay. Run just software-boot to build it.')
+        raise SystemExit('The current guest lacks the Opera overlay. Run just start to build it.')
     profile['disks'].append({'path': str(disk), 'read_only': False})
     cmd = software_command(profile, live=True, audio_dir=home if not args.test_page else None)
     cmd += ['-qmp', 'unix:' + str(home / 'qmp.sock') + ',server=on,wait=off']
@@ -72,7 +72,7 @@ def main():
         stopping = True
     signal.signal(signal.SIGINT, stop)
     signal.signal(signal.SIGTERM, stop)
-    print('VNC: vnc://127.0.0.1:5901 — run just software-view in another terminal.', flush=True)
+    print('VNC: vnc://127.0.0.1:5901 — run just view in another terminal.', flush=True)
     print('VNC password: ' + VNC_PASSWORD, flush=True)
     print('Ctrl-C stops the guest and saves its logs. Retained disk: ' + str(disk), flush=True)
     startup = f'''mkdir -p /tmp/software /tmp/lab-wayland

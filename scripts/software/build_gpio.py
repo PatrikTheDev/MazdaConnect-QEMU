@@ -12,7 +12,7 @@ def build(home, version, headers=None):
         shutil.copyfile(Path('src/software/gpio') / name, target / name)
     headers = Path(headers) if headers else Path('/usr/src') / ('linux-headers-' + version)
     if not headers.exists():
-        raise RuntimeError('Matching GPIO build headers are missing. Run just software-image.')
+        raise RuntimeError('Matching GPIO build headers are missing. Run just tools software.')
     subprocess.run(['make', '-C', str(headers), 'ARCH=arm',
                     'CROSS_COMPILE=arm-linux-gnueabi-', 'M=' + str(target), 'modules'], check=True)
     return target / 'mazda_gpio.ko'

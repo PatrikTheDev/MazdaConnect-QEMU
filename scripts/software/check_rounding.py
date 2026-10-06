@@ -19,7 +19,7 @@ if args.run:
 
 runtime = Path('/software/runtime-tree')
 if not (runtime / 'ld-linux.so.3').exists():
-    raise SystemExit('Build the software runtime first with just software-build')
+    raise SystemExit('Build the software runtime first with just build')
 with tempfile.TemporaryDirectory(prefix='mazda-rounding-') as directory:
     binary = Path(directory) / 'rounding-check'
     subprocess.run(['arm-linux-gnueabi-gcc','-O2','-Wall','-Wextra',

@@ -21,7 +21,7 @@ for line in (args.run / 'opera-samples.log').read_text(errors='replace').splitli
     if match and (int(match[1]),int(match[2])) == (args.sample,args.tid):
         words[int(match[3],16)] = int(match[4],16)
 if registers is None or not words:
-    raise SystemExit('No retained instruction window for this sample/TID; use the updated software-worker-probe')
+    raise SystemExit('No retained instruction window for this sample/TID; use just probe --sample-render --sample-workers')
 pc,lr,sp,cpsr = registers
 addresses = sorted(words)
 if len(words)>32 or addresses != list(range(addresses[0],addresses[-1]+4,4)):

@@ -1,6 +1,6 @@
 # Original audio startup prerequisites
 
-`just software-audio-probe` runs the original EU audio configuration script,
+`just probe --probe-audio --seconds 10 --debug-services` runs the original EU audio configuration script,
 then traces `/usr/bin/aopen -a` for at most eight seconds in the disposable guest.
 It retains `audio.log` in the diagnostic disk. The recipe deliberately remains a
 diagnostic and exits nonzero rather than claiming that the original UI is ready.
@@ -51,9 +51,9 @@ before choosing it for the stock playback/capture configuration.
 
 ## HDA diagnostic path
 
-`just software-audio-build` builds unmodified upstream `hda_intel.c` from Debian's
+`just dev software build_audio` builds unmodified upstream `hda_intel.c` from Debian's
 pinned `linux-source-6.1=6.1.176-1` against the matching installed headers. Existing
-packaged HDA codec/core modules are reused. `just software-audio-device-probe`
+packaged HDA codec/core modules are reused. `just probe --audio-devices --microphone-tone 700 --probe-audio --probe-vip-service --seconds 10 --debug-services`
 attaches two QEMU HDA controllers with duplex codecs and loads three ALSA
 loopbacks at indices 2–4, named Loopback0/1/2. Original card indices 0 and 1 are
 preserved. This remains an opt-in diagnostic; normal live boot is unchanged.
@@ -65,7 +65,7 @@ Thus `aopen` output/exit status is not a complete readiness criterion.
 
 Probe `/software/test-obwnxlsl` set and read the original
 `informationMuxGenericIn` mixer control, then played through `informationGeneric`.
-`just software-audio-analyze /software/test-obwnxlsl` measured the expected 1 kHz
+`just dev software check_audio_samples /software/test-obwnxlsl` measured the expected 1 kHz
 left and 2 kHz right tones in QEMU's recorded output. Capture exposed two limits:
 the WAV backend cannot create an input voice, and unadapted Bluetooth mono
 capture fails HDA's channel constraint. Neither capture path passed.
@@ -111,7 +111,7 @@ before starting that profile. This service probe is not yet verified; normal
 live boot still uses the existing profile. The checkpoint remains suitable for
 continuing device work, not a claim of complete UI or audio startup.
 
-`just software-audio-test` passed in `/software/test-fld5g_xv` after initializing
+`just probe --audio-devices --microphone-tone 700 --probe-audio --probe-vip-service --verify-audio --seconds 10 --debug-services` passed in `/software/test-fld5g_xv` after initializing
 HDA's initially muted Master/Capture controls and increasing the lab Bluetooth
 buffer to 2048 frames with a 512-frame period. The adapter's added buffering is
 256 ms at 8 kHz and 128 ms at 16 kHz; this is a lab latency tradeoff for emulation.
@@ -127,7 +127,7 @@ The captured compositor frame showed the original five-icon home screen.
 
 Live boot now enables the same VIP/audio path, with optional `--record-audio`
 and `--microphone-tone`. Speaker recordings are off by default for long-running
-viewers. `just software-key right` (also left/up/down/ret/esc) sends real emulated
+viewers. `just key right` (also left/up/down/ret/esc) sends real emulated
 keyboard events through QMP. Live output disks now receive journal replay before
 log extraction, matching the diagnostic harness.
 

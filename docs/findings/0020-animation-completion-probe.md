@@ -11,7 +11,7 @@ template and registers that element for cleanup.
 ## Reproduction
 
 ```sh
-just software-animations-probe
+just probe --renderer llvmpipe --probe-animations --inspect-surface --seconds 20
 ```
 
 This loads an isolated diagnostic page in the original Opera binary using
@@ -51,7 +51,7 @@ extended, completion event synthesized, or original UI behavior changed.
 
 ## Full-UI target trace
 
-`just software-transition-trace --seconds 90` enables logging-only
+`just probe --audio-devices --audio-services --probe-vip-service --live-output --seconds 90 --debug-services --capture-sequence --renderer llvmpipe --intro-race-fix --time-services --time-deadline-fix --websockets-queue-fix --trace-transitions --seconds 90` enables logging-only
 instrumentation in a generated copy of original `Transitions.js`. It records
 listener registration and animation callbacks. At the original watchdog entry,
 it records target completion flags and computed styles. Styles are read only
@@ -95,7 +95,7 @@ The expanded trace includes `animationName` and `elapsedTime` in original
 manager callbacks. A capture listener additionally logs stock
 `transitions_keyframes_*` start/end events without changing or cancelling them.
 It does not read computed styles before the watchdog. Logging can still affect
-scheduling. Use `just software-transition-report /software/<run>` to print
+scheduling. Use `just dev software transition_report /software/<run>` to print
 the manifest and event timeline, including a retained rotated syslog if present.
 
 The intermediate run `/software/test-707zmq2y` established that the late

@@ -18,5 +18,6 @@ services:
 volumes:
   reference:
     external: true
-    name: mazda-qemu_lab-data
+    name: ${MAZDA_REFERENCE_VOLUME:-mazda-qemu_lab-data}
   software-data:
+    name: ${MAZDA_SOFTWARE_VOLUME:-mazda-qemu-software_software-data}

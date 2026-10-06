@@ -6,12 +6,12 @@ established in finding 0025. This changes the lab environment, not the Mazda
 synchronization library or its assertion.
 
 ```sh
-just software-image
-just software-kernel-build
-just software-kernel-probe
-just software-kernel-layout-report /software/<retained-run>
-just software-mic-gain-test --kernel-profile vmsplit2g
-just software-boot --kernel-profile vmsplit2g --renderer llvmpipe --intro-race-fix --time-deadline-fix --websockets-queue-fix
+just tools software
+just dev software task kernel
+just probe --audio-devices --audio-services --probe-vip-service --live-output --seconds 90 --debug-services --capture-sequence --renderer llvmpipe --intro-race-fix --time-services --time-deadline-fix --websockets-queue-fix --kernel-profile vmsplit2g --verify-kernel-layout --seconds 90
+just dev software kernel_layout_report /software/<retained-run>
+just probe --audio-devices --microphone-tone 700 --probe-audio --probe-vip-service --verify-audio --verify-mic-gain --seconds 10 --debug-services --kernel-profile vmsplit2g
+just dev software task boot --kernel-profile vmsplit2g --renderer llvmpipe --intro-race-fix --time-deadline-fix --websockets-queue-fix
 ```
 
 Stock remains the default for builds. Explicit `--kernel-profile stock`
@@ -68,7 +68,7 @@ remain; this is not a claim of complete infotainment emulation or a rendering
 performance fix. The generic UI probe exits 1 intentionally for manual review;
 its layout and service reports were checked separately.
 
-`just software-mic-gain-test --kernel-profile vmsplit2g` passed in retained run
+`just probe --audio-devices --microphone-tone 700 --probe-audio --probe-vip-service --verify-audio --verify-mic-gain --seconds 10 --debug-services --kernel-profile vmsplit2g` passed in retained run
 `/software/test-hl9xezfn`. Original ALSA speaker playback, microphone capture
 and Bluetooth PCM transfers carried the expected tones. Both capture channels
 measured full-gain RMS 5,651.8 and half-control RMS 697.9 (ratio 0.123), matching

@@ -38,12 +38,12 @@ framebuffer used by VNC. Normal mode repaints the retained scene. A separate tim
 services control requests even when Opera is idle. The service returns a D-Bus
 error if the compositor cannot confirm the operation within two seconds.
 
-`just software-display-test` boots with a real VirtIO framebuffer and a controlled
+`just probe --test-page --inspect-surface --verify-display --seconds 20` boots with a real VirtIO framebuffer and a controlled
 Opera page. It checks normal/sleep/normal completions, black/visible pixels in both
 outputs, the status signal, malformed-request errors and unsupported-method errors.
 The full contract/pixel test passed on 2026-09-09, as did `just test`.
 The existing exact browser color/text checks still apply. Logs remain in the
-retained test disk, including `display.log`; use `just software-boot` for live viewing.
+retained test disk, including `display.log`; use `just dev software task boot` for live viewing.
 
 ## Remaining original-UI blocker
 

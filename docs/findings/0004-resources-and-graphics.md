@@ -5,7 +5,7 @@ probe; subsequent mounting and crash diagnosis are in finding 0005.
 
 ## Resource archive
 
-`just firmware-resources` reconstructs `/resources` from the update's
+`just dev firmware resources config/firmware/cmu150-eu-74.00.324A.json` reconstructs `/resources` from the update's
 `resources/files.ini.gz`, decoding each referenced gzip payload once. All 901
 files match their instruction's CRC32. Together they contain 2,529,973,599 bytes;
 the instructions also create 117 directories. Output is
@@ -46,7 +46,7 @@ This is evidence of a graphics/device integration gap, but it does not locate
 the faulting instruction or prove which absent device causes the crash.
 No substitute driver, compositor, library or successful hardware stub was added.
 
-Reproduce with `just guest-graphics-probe`; inspect
+Reproduce with `just dev reference check_boot --probe config/qemu/eu-v74-lab.json`; inspect
 `runs/eu-v74-graphics-probe.log`. The probe's success status means all diagnostic
 commands completed and the guest powered off; inspect the recorded compositor
 exit codes for the graphics result. Opera and vehicle services are not started.

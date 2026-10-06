@@ -17,13 +17,13 @@ def main():
     try:
         state = json.loads(Path('/software/live.json').read_text())
     except FileNotFoundError:
-        raise SystemExit('No live software guest. Start it with just software-boot.')
+        raise SystemExit('No live software guest. Start it with just start.')
     with socket.socket(socket.AF_UNIX, socket.SOCK_STREAM) as connection:
         connection.settimeout(10)
         try:
             connection.connect(state['qmp'])
         except (FileNotFoundError, ConnectionRefusedError):
-            raise SystemExit('The software guest is stopped. Start it with just software-boot.')
+            raise SystemExit('The software guest is stopped. Start it with just start.')
         stream = connection.makefile('rwb')
         json.loads(stream.readline())
         def call(name, arguments=None):

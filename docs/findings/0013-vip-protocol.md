@@ -1,7 +1,7 @@
 # Stateful VIP protocol peer
 
 The approved device-emulation path now has a userspace peer attached to the real
-SPI transport. `just software-vip-probe` launches it with original VIM in a bounded
+SPI transport. `just probe --probe-vip-service --seconds 20 --debug-services` launches it with original VIM in a bounded
 QEMU run. Normal live boot is not yet switched to this peer while its application
 protocol is incomplete.
 
@@ -24,7 +24,7 @@ through SIGIO every 100 ms. These are explicit lab scheduling intervals, not
 recovered hardware timings. The model currently supports one outgoing message
 at a time; timeout-based retransmission and further vehicle/TAU messages remain.
 
-`just software-vip-protocol-test` compiles and runs the protocol test in ARM
+`just dev software check_vip_protocol` compiles and runs the protocol test in ARM
 userspace, covering the captured 0x043 checksum sample, delayed ACK, duplicate
 filtering, hello ACK/NAK, heartbeat gating, and corrupt/oversized input. This
 passed before the first original-VIM probe. It does not prove application or UI
@@ -63,7 +63,7 @@ The readiness implementation was accepted by original VBS in
 `/software/test-upzic6sf`: `jciVBS` reported STARTED at guest timestamp 15.077,
 while the original system service also remained STARTED. The next observed
 blocker is TAU connection, with the radio service repeatedly requesting status
-and the system logging `Tau connected timeout!`. `just software-vbs-test` now
+and the system logging `Tau connected timeout!`. `just probe --probe-vip-service --verify-vbs --seconds 20 --debug-services` now
 checks original hello acceptance, VBS/system STARTED, absence of null IPC handles
 or checksum/ACK errors, and clean shutdown. It does not assert full UI success.
 
@@ -81,7 +81,7 @@ will therefore avoid inventing destination, XM, or accessory configuration.
 The exact expanded-message offsets still need verification before adding that
 response. No TAU connection reply has yet been implemented.
 
-`just software-vbs-test` passed in `/software/test-_7y9qzsb`, including clean guest
+`just probe --probe-vip-service --verify-vbs --seconds 20 --debug-services` passed in `/software/test-_7y9qzsb`, including clean guest
 shutdown. The TAU payload offset was then confirmed in `VBS_BUS_CAN_EventCallback`
 at 0xa6e0–0xa718: it expands ID at offset 0, length at offset 5, and payload at
 offset 6. Thus the mask read at offset 6 is payload byte 0; A08A is mask bit 3.

@@ -55,7 +55,7 @@ glibc. The original init files are untouched and not executed. Separate resource
 payloads and state partitions are not reconstructed yet.
 
 Validation: `just test` passed nine tests, ShellCheck and the tooling/QEMU smoke
-tests. `just guest-test` reached `MAZDA_LAB_READY`, executed a BusyBox output check,
+tests. `just dev reference check_boot config/qemu/eu-v74-lab.json` reached `MAZDA_LAB_READY`, executed a BusyBox output check,
 reported kernel `6.1.0-50-armmp`, and powered off cleanly. This establishes a
 full-system userspace shell, not a boot of the original Mazda kernel or UI.
 

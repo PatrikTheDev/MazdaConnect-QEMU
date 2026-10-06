@@ -26,7 +26,7 @@ evidence from its boot code rather than a recovered `CONFIG_VMSPLIT` setting.
 ## Original kernel layout evidence
 
 ```sh
-just software-original-kernel-layout
+just dev firmware kernel_layout
 ```
 
 This read-only recipe verifies the EU 74.00.324A zImage, decodes its LZO stream
@@ -47,8 +47,8 @@ executing or modifying the vehicle kernel.
 ## Retained crash evidence
 
 ```sh
-just software-vbs-core-report /software/test-vbaq7rpb --thread 26 --frame 5
-just software-inspect jci/lib/libjci.so 0xf1020 0xf14f4
+just dev software vbs_core_report /software/test-vbaq7rpb --thread 26 --frame 5
+just dev software inspect_abi jci/lib/libjci.so 0xf1020 0xf14f4
 ```
 
 The retained file is named `compositor.core` because the harness used that

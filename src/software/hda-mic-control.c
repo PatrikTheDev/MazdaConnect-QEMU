@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: GPL-2.0-only
 // Lab adapter: retain HDA capture gain behavior under Mazda's mixer name.
 #include <linux/module.h>
 #include <linux/string.h>

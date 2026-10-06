@@ -1,8 +1,8 @@
 # Original Opera frame-callback delivery
 
 ```sh
-just software-callback-report /software/test-y7y19r8y
-just software-transition-trace --sample-render --seconds 90
+just dev software callback_report /software/test-y7y19r8y
+just probe --audio-devices --audio-services --probe-vip-service --live-output --seconds 90 --debug-services --capture-sequence --renderer llvmpipe --intro-race-fix --time-services --time-deadline-fix --websockets-queue-fix --trace-transitions --sample-render --seconds 90
 ```
 
 The report pairs original `wl_surface.frame` requests with their callback IDs,
@@ -39,8 +39,8 @@ time, excludes first observations and missing intervals, and reports ticks
 without assuming a tick frequency or converting them to CPU percentages.
 
 ```sh
-just software-thread-report /software/<run>
-just software-thread-report /software/<run> --first 30 --last 50
+just dev software thread_report /software/<run>
+just dev software thread_report /software/<run> --first 30 --last 50
 ```
 
 Snapshots are not simultaneous and ptrace perturbs scheduling. Raw sampled
@@ -74,7 +74,7 @@ healthy complete startup. The two animation watchdogs remain.
 ## Compositor timeline during the failing transitions
 
 ```sh
-just software-frame-report /software/test-vbaq7rpb --timeline
+just dev software frame_report /software/test-vbaq7rpb --timeline
 ```
 
 The optional timeline prints UTC begin/end timestamps, paint/display/save/total
@@ -105,10 +105,10 @@ include diagnostic overhead; the report does not measure client dispatch.
 ## Opt-in raster-worker instruction sampling
 
 ```sh
-just software-worker-probe
-just software-thread-report /software/test-izfv4080 --first 25 --last 55
-just software-transition-report /software/test-izfv4080
-just software-health-report /software/test-izfv4080
+just probe --audio-devices --audio-services --probe-vip-service --live-output --seconds 90 --debug-services --capture-sequence --renderer llvmpipe --intro-race-fix --time-services --time-deadline-fix --websockets-queue-fix --trace-transitions --sample-render --sample-workers --seconds 90
+just dev software thread_report /software/test-izfv4080 --first 25 --last 55
+just dev software transition_report /software/test-izfv4080
+just report /software/test-izfv4080
 ```
 
 The worker probe adds `--sample-workers` to the existing register sampler.
@@ -151,10 +151,10 @@ its generated code and floating-point environment operations. Two hits in
 ## Startup trace with the corrected userspace boundary
 
 ```sh
-just software-frame-profile --kernel-profile vmsplit2g --trace-transitions --seconds 90
-just software-frame-report /software/test-ea_xg5bw --timeline
-just software-transition-report /software/test-ea_xg5bw
-just software-health-report /software/test-ea_xg5bw
+just probe --audio-devices --audio-services --probe-vip-service --live-output --seconds 90 --debug-services --capture-sequence --renderer llvmpipe --intro-race-fix --time-services --time-deadline-fix --websockets-queue-fix --profile-frames --kernel-profile vmsplit2g --trace-transitions --seconds 90
+just dev software frame_report /software/test-ea_xg5bw --timeline
+just dev software transition_report /software/test-ea_xg5bw
+just report /software/test-ea_xg5bw
 ```
 
 This run uses the validated 2 GiB kernel from finding 0027, without ptrace

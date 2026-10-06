@@ -14,7 +14,7 @@ def selected(name):
         raise ValueError('Unknown kernel profile: ' + name)
     manifest = Path('/software/kernels/vmsplit2g/manifest.json')
     if not manifest.exists():
-        raise RuntimeError('Build the opt-in kernel first: just software-kernel-build')
+        raise RuntimeError('Build the opt-in kernel first: just dev software task kernel')
     cfg = json.loads(manifest.read_text())
     with Path(cfg['kernel']).open('rb') as stream:
         if hashlib.file_digest(stream,'sha256').hexdigest()!=cfg['kernel_sha256']:

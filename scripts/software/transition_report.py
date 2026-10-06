@@ -25,5 +25,5 @@ for name in ('syslog.log.0', 'syslog.log'):
         print((stamp.group(1) + ' ' if stamp else '') + detail)
         count += 1
 if not count:
-    raise SystemExit('No transition evidence found; run just software-transition-trace.')
+    raise SystemExit('No transition evidence found; run just dev software task opera --audio-devices --audio-services --probe-vip-service --live-output --seconds 90 --debug-services --capture-sequence --renderer llvmpipe --intro-race-fix --time-services --time-deadline-fix --websockets-queue-fix --trace-transitions.')
 print('Event timestamps include diagnostic logging overhead; this is not a performance benchmark.')

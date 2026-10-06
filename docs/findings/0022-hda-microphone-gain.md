@@ -40,8 +40,8 @@ it does not correct QEMU's reported dB scale or reproduce vehicle calibration.
 ## Verification
 
 ```sh
-just software-mic-gain-test
-just software-mic-gain-report /software/test-n70cobb9
+just probe --audio-devices --microphone-tone 700 --probe-audio --probe-vip-service --verify-audio --verify-mic-gain --seconds 10 --debug-services
+just dev software check_mic_gain /software/test-n70cobb9
 ```
 
 The diagnostic uses a private 700 Hz microphone source. It records full gain,
@@ -57,13 +57,13 @@ correctly failed that assumption. Re-analysis against the documented backend
 conversion passes; the acceptance band is ±10% of the source-derived value,
 not a fitted range around the observation. `just test` passed.
 
-A fresh complete `just software-mic-gain-test` passed in
+A fresh complete `just probe --audio-devices --microphone-tone 700 --probe-audio --probe-vip-service --verify-audio --verify-mic-gain --seconds 10 --debug-services` passed in
 `/software/test-03ki971y`: full RMS 5649.2 and half-control RMS 697.9 on both
 channels, ratio 0.124. Playback, microphone and Bluetooth tone checks also
 passed, and the guest shut down cleanly.
 
 Full original-settings startup was verified in `/software/test-ke51c_kg` with
-`just software-websockets-fix-probe --seconds 90`. The original settings service
+`just probe --audio-devices --audio-services --probe-vip-service --live-output --seconds 90 --debug-services --capture-sequence --renderer llvmpipe --intro-race-fix --time-services --time-deadline-fix --websockets-queue-fix --seconds 90`. The original settings service
 logged four successful `Set_CPP_aal_mixer` calls (`Attenuation Value Set`), with
 zero missing `MIC Level` controls or mixer-call failures. Selected settings,
 audio, system, VBS, database, time and UI services reached STARTED. The captured

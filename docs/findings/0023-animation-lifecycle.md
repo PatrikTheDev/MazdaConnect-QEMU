@@ -7,7 +7,7 @@ tests whether transparent initialization and attachment alone reproduce the
 failure without that early style read.
 
 ```sh
-just software-animation-lifecycle-probe
+just probe --renderer llvmpipe --probe-animations --animation-lifecycle --inspect-surface --seconds 25
 ```
 
 The page runs four sequential cases in original Opera with llvmpipe. It loads
@@ -42,7 +42,7 @@ firmware timeout or animation behavior has been changed.
 
 ## Full-UI painter comparison
 
-`just software-transition-trace --no-hw-accel --seconds 90` retains the same
+`just probe --audio-devices --audio-services --probe-vip-service --live-output --seconds 90 --debug-services --capture-sequence --renderer llvmpipe --intro-race-fix --time-services --time-deadline-fix --websockets-queue-fix --trace-transitions --no-hw-accel --seconds 90` retains the same
 llvmpipe configuration and approved startup fixes while passing Opera's
 `--noHWAccel` option. The guest command line in `/software/test-ih03phk3`
 confirms the option was passed. The home screen rendered with 00:28; selected

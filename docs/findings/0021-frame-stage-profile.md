@@ -1,8 +1,8 @@
 # Software frame-stage profiling
 
-`just software-frame-profile --seconds 90` runs the original UI with the three
+`just probe --audio-devices --audio-services --probe-vip-service --live-output --seconds 90 --debug-services --capture-sequence --renderer llvmpipe --intro-race-fix --time-services --time-deadline-fix --websockets-queue-fix --profile-frames --seconds 90` runs the original UI with the three
 approved fixes and logs compositor stages without attaching ptrace to Opera.
-`just software-frame-report /software/<run>` reports complete-frame wall-clock
+`just dev software frame_report /software/<run>` reports complete-frame wall-clock
 durations and excludes idle gaps between frames. Scheduling delays within a
 frame remain included; these are not isolated CPU instruction benchmarks.
 
@@ -35,7 +35,7 @@ to 63.91ms and total frame time to 213.68ms, but retained two animation timeouts
 Its 00:00 screenshot was real guest midnight: original BLM logged
 `Time:2026-09-10 00:00:00`, not a clock initialization regression.
 
-`just software-test` verified exact color-bar pixels and frame callbacks after
+`just dev software task test` verified exact color-bar pixels and frame callbacks after
 the writer change. `just test` passed. The final PPM-only run `/software/test-l_bx8j6b` contains 82 complete frames:
 
 | Stage | Median ms | p95 ms |

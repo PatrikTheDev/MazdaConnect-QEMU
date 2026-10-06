@@ -22,10 +22,10 @@ arithmetic to avoid signed overflow. Views whose fast-path fixed-point range
 would overflow fall back to the original routine.
 
 ```sh
-just software-draw-test --kernel-profile vmsplit2g
-just software-draw-position-test --verify-draw
-just software-draw-position-test --reference-draw
-just software-draw-probe --seconds 90
+just dev software task test --verify-draw --kernel-profile vmsplit2g
+just probe --kernel-profile vmsplit2g --test-page --inspect-surface --renderer llvmpipe --probe-draw-positions --seconds 10 --verify-draw
+just probe --kernel-profile vmsplit2g --test-page --inspect-surface --renderer llvmpipe --probe-draw-positions --seconds 10 --reference-draw
+just probe --audio-devices --audio-services --probe-vip-service --live-output --seconds 90 --debug-services --capture-sequence --renderer llvmpipe --intro-race-fix --time-services --time-deadline-fix --websockets-queue-fix --kernel-profile vmsplit2g --verify-draw --seconds 90
 ```
 
 The geometry test uses the original Opera test-page buffer and stock IVI
@@ -74,15 +74,15 @@ logs had zero JavaScript exceptions, heartbeat misses and database semaphore
 failures. Two startup animation watchdogs remain.
 
 ```sh
-just software-boot --kernel-profile vmsplit2g --renderer llvmpipe --intro-race-fix --time-deadline-fix --websockets-queue-fix --seconds 240 --start-delay 0
-just software-capture
-just software-key right
-just software-key right
-just software-key ret
-just software-capture
-just software-key backspace
-just software-capture
-just software-stop
+just dev software task boot --kernel-profile vmsplit2g --renderer llvmpipe --intro-race-fix --time-deadline-fix --websockets-queue-fix --seconds 240 --start-delay 0
+just capture
+just key right
+just key right
+just key ret
+just capture
+just key backspace
+just capture
+just stop
 ```
 
 Allow each visible transition to settle before the next capture/key. In live

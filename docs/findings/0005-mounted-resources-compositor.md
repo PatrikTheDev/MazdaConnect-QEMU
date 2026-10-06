@@ -5,7 +5,7 @@ Debian 6.1.0-50-armmp kernel, original Mazda BusyBox and glibc 2.11.1.
 
 ## Resources
 
-`just resources-disk` verifies the reconstructed resource archive hash and creates
+`just dev reference resources_disk cmu150-eu-74.00.324A` verifies the reconstructed resource archive hash and creates
 a 3 GiB ext4 filesystem using `mkfs.ext4 -d`, without mounting it on the host.
 The filesystem passes `e2fsck -fn`. QEMU opens it read-only; lab init mounts it
 `ro,noload` at `/tmp/mnt/resources`, reached through the vendor's `/mnt` and
@@ -25,7 +25,7 @@ guest check samples mounted content; it does not rehash every mounted file.
 
 ## Crash evidence
 
-`just guest-graphics-probe` starts the original compositor with
+`just dev reference check_boot --probe config/qemu/eu-v74-lab.json` starts the original compositor with
 `WL_COMPOSITOR_CONFIG=/etc/wayland/compositor_jci_display.conf`, original
 libraries, and a writable private `XDG_RUNTIME_DIR`. A statically linked ARM
 ptrace helper records main-thread open/access/ioctl results and forwards signals
@@ -82,8 +82,8 @@ The compositor also exits cleanly on SIGTERM. This verifies a functioning
 protocol/event loop and original IVI plugin in the emulated environment, with
 zero display outputs. It does not render pixels or start Opera.
 
-Use `just compositor` for an interactive guest with this mode running, or
-`just compositor-test` for a bounded boot/resource/Wayland/poweroff check.
+Use `just dev reference boot --compositor config/qemu/eu-v74-lab.json` for an interactive guest with this mode running, or
+`just dev reference check_boot --compositor config/qemu/eu-v74-lab.json` for a bounded boot/resource/Wayland/poweroff check.
 
 ## Evidence and independent experiments
 
@@ -95,7 +95,7 @@ Use `just compositor` for an interactive guest with this mode running, or
 - `artifacts/cmu150-eu-74.00.324A.resources-disk.json`: disk/archive hashes.
 
 These generated files stay outside Git. `just test` passes 13 tests, ShellCheck,
-ARM user-mode execution and QEMU initialization; `just compositor-test` passes
+ARM user-mode execution and QEMU initialization; `just dev reference check_boot --compositor config/qemu/eu-v74-lab.json` passes
 the full-system checks described above.
 
 The next two research paths are a software output plugin for the original

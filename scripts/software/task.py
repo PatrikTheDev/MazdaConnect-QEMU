@@ -13,7 +13,7 @@ jobs = {
     'test': ('check.py', []), 'opera': ('check.py', ['--opera']),
     'vnc': ('check_vnc.py', []),
 }
-if mode not in (*jobs, 'build', 'kernel'):
+if mode not in (*jobs, 'build', 'build-ui', 'kernel'):
     raise SystemExit('Unknown software task: ' + mode)
 Path('/software').mkdir(exist_ok=True)
 lock = open('/software/active.lock', 'w')
@@ -31,7 +31,7 @@ kernel_profile = options.kernel_profile
 if mode == 'run' and kernel_profile is not None:
     built = json.loads(Path('/software/guest/profile.json').read_text())
     if built.get('kernel_profile','stock') != kernel_profile:
-        raise SystemExit('Built profile differs; use just software-boot with the requested --kernel-profile')
+        raise SystemExit('Built profile differs; use just start with the requested --kernel-profile')
 if mode != 'run':
     build = [sys.executable, 'scripts/software/build.py']
     if kernel_profile is not None:
