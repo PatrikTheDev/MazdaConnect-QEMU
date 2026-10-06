@@ -62,3 +62,5 @@ configuration, build/install scripts, and applicable notices alongside them.
 A firmware-containing initramfs is not a Linux-only binary. Follow the
 [GPLv2 requirements](https://www.gnu.org/licenses/old-licenses/gpl-2.0.en.html)
 and the licenses of every bundled dependency before adding binary releases.
+
+Recorded ARM64 results are in [source release validation](findings/0030-source-release-validation.md).

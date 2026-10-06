@@ -12,8 +12,8 @@ tools scope="all":
     bash scripts/lab.sh tools "$1"
 
 # Import exact EU 74.00.324A from artifacts/ and build the complete software guest.
-setup package:
-    bash scripts/lab.sh setup "$1"
+setup package *args:
+    bash scripts/lab.sh setup "$@"
 
 # Rebuild tooling, the 2 GiB kernel, and UI after source changes; setup required first.
 build *args:
@@ -33,7 +33,7 @@ view:
 
 # Stop the live guest and retain logs.
 stop:
-    docker stop --time 25 mazda-software-live
+    docker stop -t 25 mazda-software-live
 
 # Inspect the live QEMU guest and VNC clients.
 status:

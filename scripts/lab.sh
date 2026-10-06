@@ -34,9 +34,18 @@ case "$action" in
         esac
         ;;
     setup)
-        [[ $# == 1 ]] || { echo 'Usage: just setup artifacts/PACKAGE.up' >&2; exit 2; }
-        [[ -f $1 ]] || { echo "Firmware package not found: $1" >&2; exit 2; }
-        directory=$(cd "$(dirname "$1")" && pwd -P)
+        [[ $# -ge 1 ]] || { echo 'Usage: just setup artifacts/PACKAGE.up [--jobs 1..32]' >&2; exit 2; }
+        package=$1
+        shift
+        jobs=4
+        if [[ $# -gt 0 ]]; then
+            [[ $# == 2 && $1 == --jobs && ${2:-} =~ ^([1-9]|[12][0-9]|3[0-2])$ ]] || {
+                echo 'Setup accepts only --jobs 1..32 after the package path.' >&2; exit 2;
+            }
+            jobs=$2
+        fi
+        [[ -f $package ]] || { echo "Firmware package not found: $package" >&2; exit 2; }
+        directory=$(cd "$(dirname "$package")" && pwd -P)
         [[ $directory == "$(pwd -P)/artifacts" ]] || {
             echo 'Place the firmware package directly in artifacts/ before setup.' >&2; exit 2;
         }
@@ -45,9 +54,9 @@ case "$action" in
         }
         bash scripts/doctor.sh
         images
-        compose reference run --rm lab python3 scripts/firmware/prepare.py "artifacts/$(basename "$1")"
+        compose reference run --rm lab python3 scripts/firmware/prepare.py "artifacts/$(basename "$package")"
         compose software run --rm lab python3 scripts/software/prepare.py
-        task kernel
+        task kernel --jobs "$jobs"
         task build-ui --kernel-profile vmsplit2g
         echo 'Setup complete. Run just start, then just view in another terminal.'
         ;;
@@ -59,7 +68,7 @@ case "$action" in
     start|restart)
         mode=boot
         [[ $action != restart ]] || mode=run
-        compose software run --rm --name mazda-software-live --service-ports lab \
+        exec docker compose -f compose.software.yaml run --rm --name mazda-software-live --service-ports lab \
             python3 scripts/software/task.py "$mode" --kernel-profile vmsplit2g \
             --renderer llvmpipe --intro-race-fix --time-deadline-fix --websockets-queue-fix "$@"
         ;;

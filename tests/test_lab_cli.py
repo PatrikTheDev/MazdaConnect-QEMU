@@ -51,3 +51,11 @@ class LabCliTests(unittest.TestCase):
         self.assertEqual(result.returncode, 2)
         self.assertIn('directly in artifacts/', result.stderr)
         self.assertEqual(calls, [])
+
+    def test_setup_rejects_invalid_worker_counts_before_docker(self):
+        for value in ('0', '33', '4; exit 0'):
+            with self.subTest(value=value):
+                result, calls = self.invoke('setup', 'artifacts/input.up', '--jobs', value)
+                self.assertEqual(result.returncode, 2)
+                self.assertIn('--jobs 1..32', result.stderr)
+                self.assertEqual(calls, [])

@@ -11,7 +11,8 @@ and generated guest images are not distributed here.
 
 ## Requirements
 
-- Git, [just](https://just.systems/), and Docker with Compose v2 using Linux containers.
+- Git, Bash, [just](https://just.systems/), and Docker with Compose v2 using Linux containers.
+  Bash is standard on macOS/Linux; use a WSL2 shell for Windows experiments.
 - A VNC client. macOS Screen Sharing works with `just view`; on other systems,
   connect a client manually to `127.0.0.1:5901`.
 - The exact `cmu150_EU_74.00.324A_update.up` package and its ZIP password, obtained
@@ -56,7 +57,9 @@ just start
 `setup` builds the pinned tooling images, verifies and imports your package,
 extracts and analyzes it, reconstructs the resources disk and reference guest,
 prepares the software runtime, compiles the 2 GiB userspace kernel and matching
-modules, and builds the UI guest. Initial compilation can take a while. No rooted
+modules, and builds the UI guest. A fresh four-worker setup took about 50 minutes
+on the validation host. `just setup artifacts/PACKAGE.up --jobs 8` can use more
+compile workers when your Docker runtime has enough CPU and memory. No rooted
 vehicle is needed. Setup never downloads Mazda firmware or runs its updater.
 Repeated setup verifies the input and reuses an existing atomic outer extraction;
 it does not remove lab data.
@@ -155,7 +158,8 @@ Publish source-only releases. Do not upload firmware, generated initramfs files,
 resource/runtime disks, vendor libraries, exported volumes, or full modified Mazda
 applications through Git, Git LFS, Actions artifacts, or release attachments.
 The publication guard is a useful check, not an exhaustive secret/provenance audit.
-See [release procedure](docs/release.md), [third-party inputs](THIRD_PARTY.md),
+See [release procedure](docs/release.md), [fresh-volume validation](docs/findings/0030-source-release-validation.md),
+[third-party inputs](THIRD_PARTY.md),
 [contributing](CONTRIBUTING.md), and [layout](docs/layout.md).
 
 Original project code and documentation are **GPL-2.0-only**; see [LICENSE](LICENSE).
