@@ -96,6 +96,9 @@ just start --remote-gui
 `--remote-gui` enables developer mode and leaves guest Opera stopped so the
 desktop browser is the sole GUI client. `--developer-mode` enables the same
 server while retaining guest Opera.
+Desktop disclaimer and home-screen delivery have been verified. Settings
+selection lost the browser page during validation, so complete desktop
+navigation and long-session stability remain unverified.
 This runs the original developer-mode helper, which creates
 `/data/integration/developer_mode_on_flag` and copies the developer GUI config.
 The lab starts the original BusyBox HTTP server with `/jci/gui` as its document
@@ -108,7 +111,9 @@ are replaced by this lab network configuration. Firmware network scripts remain
 unchanged. Developer mode also applies the approved, hash-checked
 [browser compatibility adaptation](docs/findings/0031-developer-server.md) to a
 generated copy of `Transitions.js`, allowing initialization without the legacy
-Opera version API. Developer mode and its data files last only until this guest stops;
+Opera version API, and keeps the typed byte view in the MMUI frame decoder so
+desktop browsers can read screen-context messages. Developer mode and its data
+files last only until this guest stops;
 use `--remote-gui` or `--developer-mode` again with `just restart`. Normal boots have no NIC or
 developer port publications.
 

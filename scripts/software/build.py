@@ -53,13 +53,16 @@ if args.opera:
     files.append(('lab-software/svcjciblmtime-deadline-fix.so', build_time_fix(home), 0o755))
     files.append(('lab-software/time-deadline-fix.json', (home / 'time-deadline-fix.json').read_bytes(), 0o644))
     from build_websockets_fix import build as build_websockets_fix
-    files.append(('lab-software/Websockets-queue-fix.js', build_websockets_fix(home), 0o644))
+    websockets_queue_fix = build_websockets_fix(home)
+    files.append(('lab-software/Websockets-queue-fix.js', websockets_queue_fix, 0o644))
     files.append(('lab-software/websockets-queue-fix.json', (home / 'websockets-queue-fix.json').read_bytes(), 0o644))
     from build_transition_trace import build as build_transition_trace
     files.append(('lab-software/Transitions-trace.js', build_transition_trace(home), 0o644))
     files.append(('lab-software/transition-trace.json', (home / 'transition-trace.json').read_bytes(), 0o644))
-    from build_browser_compat import build as build_browser_compat
+    from build_browser_compat import build as build_browser_compat, websocket_variants
     files.append(('lab-software/Transitions-browser-compat.js', build_browser_compat(home), 0o644))
+    for name, data in websocket_variants(home, websockets_queue_fix).items():
+        files.append(('lab-software/' + name, data, 0o644))
     files.append(('lab-software/browser-compat.json', (home / 'browser-compat.json').read_bytes(), 0o644))
     sampler = home / 'sample-process'
     subprocess.run(['arm-linux-gnueabi-gcc', '-static', '-O2', '-Wall', '-Wextra', '-Werror',

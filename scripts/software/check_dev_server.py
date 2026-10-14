@@ -9,7 +9,8 @@ import socket
 
 def verify(host, http_port=8080):
     for path, expected in (('/', b'<title>HMI GUI</title>'),
-                           ('/common/transitions/js/Transitions.js', b'LAB_BROWSER_COMPAT')):
+                           ('/common/transitions/js/Transitions.js', b'LAB_BROWSER_COMPAT'),
+                           ('/framework/js/Websockets.js', b'var rcvData = (new Uint8Array([].map.call(e.data, function(c) { return c.charCodeAt(0); } )));')):
         connection = http.client.HTTPConnection(host, http_port, timeout=10)
         try:
             connection.request('GET', path)

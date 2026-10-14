@@ -16,6 +16,7 @@ Observed source SHA-256 values:
 | `jci/scripts/start_network.sh` | `ec5139bd1cfda9e138d309847f3f81508c2308b5126a5a1f9af2fb67ecb8dc70` |
 | `jci/gui/common/js/GuiConfig.js` | `dadf225a4d42637985be69136f0ae59b37636de19dbe3b28133a0ec013eb1833` |
 | `jci/gui/common/transitions/js/Transitions.js` | `d2ff7c0da76757d3aa211dcf99708976c1b0b34c9365664336a3618f77b6ab08` |
+| `jci/gui/framework/js/Websockets.js` | `40e21c3e7e661174f06b65c234788b3f0a78445685e0d784677f3dabc460cbd2` |
 
 ## Lab network adaptation
 
@@ -49,6 +50,20 @@ and logs a warning for other browsers. The legacy Opera version branch remains.
 patch site before generating a separate file. The original firmware inputs and
 software sysroot remain unchanged. Generated patch hashes are retained in
 `browser-compat.json`.
+
+The original MMUI frame decoder constructs a `Uint8Array`, takes its `.buffer`,
+then reads `.length` and indexed bytes from that `ArrayBuffer`. These properties
+are undefined in Chromium, so the JSON length and trailing sequence byte are
+lost for screen-context messages. The approved correction removes only the
+`.buffer` access and retains the typed view. JSON contents, sequence bytes and
+the native WebSocket wire format remain unchanged.
+
+The builder generates both decoder-only and queue-plus-decoder variants, checking
+the original source hash and the existing queue correction's output hash before
+applying the exact decoder edit. Developer startup selects the variant according
+to `LAB_WEBSOCKETS_QUEUE_FIX`; it does not silently enable or remove that separate
+correction. Both variants' input/output hashes are retained in the browser patch
+report. Normal boots retain the existing queue behavior and original decoder.
 
 `--remote-gui` enables the same developer flag and network but leaves guest Opera
 stopped, allowing the desktop browser to be the sole GUI client. The compositor,
@@ -89,5 +104,20 @@ the UI overlay rebuilt successfully while a live guest used its snapshot.
 Firmware-free unit/shell/publication and ARM/QEMU smoke checks passed with a
 user-approved read-only Git metadata mount for the managed worktree.
 
-Browser screen-context validation remains in progress. HTTP delivery and
-WebSocket upgrades alone do not prove full GUI rendering or navigation.
+With the typed-array correction, Chromium received the real Disclaimer and
+HomeScreen contexts with matching numeric sequence counters and all three
+WebSockets open. Enter accepted the disclaimer. A browser attached after guest
+Opera started also received HomeScreen; the earlier blank second-client view
+was the decoder defect, not evidence of a firmware single-client restriction.
+The documented `m` rotary key changed the desktop home selection to Settings.
+Selecting Settings with Enter then lost the browser page, even with sequential
+automation commands and guest Opera running. Complete desktop Settings
+navigation is not verified; no additional animation or MMUI adaptation was
+applied to bypass this result.
+
+An earlier rapid arrow-key experiment lost its browser page, and MMUI later
+stopped after missing GUI health responses. A subsequent automation wait also
+failed with a busy-daemon error after overlapping inspection requests. Those
+runs do not establish reliable desktop arrow-key navigation or long-session
+stability. HTTP delivery and WebSocket upgrades alone do not prove full vehicle
+behavior; the validated screen contexts and remaining limits are recorded here.
