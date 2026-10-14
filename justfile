@@ -33,7 +33,7 @@ view:
 
 # Stop the live guest and retain logs.
 stop:
-    docker stop -t 25 mazda-software-live
+    docker stop -t 25 "mazda-software-${MAZDA_INSTANCE:-live}"
 
 # Inspect the live QEMU guest and VNC clients.
 status:
@@ -54,7 +54,7 @@ verify *args:
 # Firmware-free unit, shell, publication, and ARM/QEMU smoke checks.
 test:
     docker compose run --rm lab python3 -m unittest discover -s tests -v
-    docker compose run --rm lab shellcheck scripts/lab.sh scripts/doctor.sh scripts/vehicle/inventory.sh scripts/guest/smoke.sh overlays/lab/lab-init overlays/lab/run-compositor overlays/software/run-opera overlays/software/start-services overlays/software/audio-check overlays/software/configure-audio
+    docker compose run --rm lab shellcheck scripts/lab.sh scripts/doctor.sh scripts/vehicle/inventory.sh scripts/guest/smoke.sh overlays/lab/lab-init overlays/lab/run-compositor overlays/software/run-opera overlays/software/start-services overlays/software/start-dev-server overlays/software/audio-check overlays/software/configure-audio
     docker compose run --rm lab python3 scripts/release/check_publication.py
     docker compose run --rm lab bash scripts/guest/smoke.sh
 

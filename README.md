@@ -86,6 +86,57 @@ Ctrl-C in the boot terminal also shuts down the guest and retains logs. Restart
 without compiling with `just restart`. Run `just build` after changing build inputs
 or tooling; `just start` rebuilds the guest overlay before booting.
 
+To enable the vehicle's developer HTTP server and load its remote GUI:
+
+```sh
+just start --remote-gui
+# Open http://127.0.0.1:8080/ after services have started.
+```
+
+`--remote-gui` enables developer mode and leaves guest Opera stopped so the
+desktop browser is the sole GUI client. `--developer-mode` enables the same
+server while retaining guest Opera.
+This runs the original developer-mode helper, which creates
+`/data/integration/developer_mode_on_flag` and copies the developer GUI config.
+The lab starts the original BusyBox HTTP server with `/jci/gui` as its document
+root on guest port 80. A virtio Ethernet adapter uses `10.0.2.15/24`; QEMU forwards
+host HTTP port 8080 and the GUI's native WebSocket ports 2700 (MMUI), 2766 (DBAPI),
+and 2800 (AppSDK). Docker publishes all four on host loopback. QEMU's restricted
+user network blocks outbound access; no TAP, host networking or privileged
+container is needed. The vehicle's i.MX/USB Ethernet drivers, DHCP and SSH startup
+are replaced by this lab network configuration. Firmware network scripts remain
+unchanged. Developer mode also applies the approved, hash-checked
+[browser compatibility adaptation](docs/findings/0031-developer-server.md) to a
+generated copy of `Transitions.js`, allowing initialization without the legacy
+Opera version API. Developer mode and its data files last only until this guest stops;
+use `--remote-gui` or `--developer-mode` again with `just restart`. Normal boots have no NIC or
+developer port publications.
+
+Live instances can run alongside one another:
+
+```sh
+# In separate terminals; each instance needs its own name and VNC port.
+just start
+MAZDA_INSTANCE=dev-server MAZDA_VNC_PORT=5902 just restart --remote-gui
+MAZDA_INSTANCE=dev-server MAZDA_VNC_PORT=5902 just view
+MAZDA_INSTANCE=dev-server just status
+MAZDA_INSTANCE=dev-server just key right
+MAZDA_INSTANCE=dev-server just capture
+MAZDA_INSTANCE=dev-server just stop
+```
+
+Builds and bounded research probes still serialize shared build outputs. Each
+live launch snapshots the kernel, initramfs and software runtime disk before
+releasing the build lock, and keeps only a lock for its own instance name.
+Later builds cannot overwrite those running inputs. Named instances retain
+separate logs in `runs/software-NAME*.log`, captures in
+`artifacts/software-NAME.png`, and images/control state in the private software
+volume. Snapshots consume additional disk space and remain with the diagnostics.
+Instances started by older code must exit once to release the old lifetime build
+lock. `MAZDA_HTTP_PORT` can change host HTTP port 8080; WebSocket ports stay fixed
+because the original GUI embeds them, so only one developer instance can publish
+them on the same host address at a time.
+
 ## What the default UI configuration changes
 
 `just start` and `just restart` explicitly select the built `vmsplit2g` kernel,

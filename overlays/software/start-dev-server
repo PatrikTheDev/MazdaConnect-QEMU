@@ -1,0 +1,16 @@
+#!/bin/sh
+# Lab equivalent of the developer HTTP branch in /jci/scripts/start_network.sh.
+# The original network script loads i.MX/USB drivers and starts vehicle DHCP/SSH.
+set -eu
+[ -f /data/integration/developer_mode_on_flag ] || exit 0
+cp /lab-software/Transitions-browser-compat.js /jci/gui/common/transitions/js/Transitions.js
+cp /lab-software/browser-compat.json "${LAB_LOG_DIR:-/tmp/software}/browser-compat.json"
+echo 'LAB_BROWSER_COMPAT enabled: guarded legacy Opera version check'
+/lab-software/load-network
+/bin/busybox ifconfig eth0 10.0.2.15 netmask 255.255.255.0 up
+# SLIRP preserves non-loopback clients' source addresses. Replies to Docker's
+# forwarded connections need a route via its virtual gateway.
+/bin/busybox route add default gw 10.0.2.2 eth0
+# Use the original server, document root and guest port; foreground for logging.
+/usr/sbin/httpd -f -p 80 -h /jci/gui > "${LAB_LOG_DIR:-/tmp/software}/dev-server.log" 2>&1 &
+echo 'LAB_DEV_SERVER_STARTED: guest HTTP :80'

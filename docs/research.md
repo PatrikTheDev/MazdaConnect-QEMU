@@ -69,6 +69,30 @@ This lower-level command does not publish VNC ports. Use an explicit
 `docker compose -f compose.software.yaml run --rm --service-ports lab python3 scripts/software/task.py boot ...`
 when a research guest needs host access. The everyday `just start` handles ports.
 
+For the original developer HTTP server, use the live runner:
+
+```sh
+MAZDA_INSTANCE=dev-server MAZDA_VNC_PORT=5902 just start --remote-gui --seconds 160 --start-delay 0
+```
+
+Open `http://127.0.0.1:8080/` after `LAB_DEV_SERVER_STARTED`. The native GUI
+WebSocket services also need time to start. The live wrapper publishes HTTP and
+all three WebSocket ports only with `--developer-mode` or `--remote-gui`; a raw Compose research
+launch needs explicit `--publish` mappings instead of `--service-ports` for these
+ports (Compose does not allow both options together). See the README for named
+instances, runtime snapshots and the fixed WebSocket port constraint.
+
+To verify the running instance through its container network interface:
+
+```sh
+MAZDA_INSTANCE=dev-server just dev software check_dev_server
+```
+
+This checks the HTTP index and browser compatibility asset, then validates all
+three WebSocket upgrade responses, accept keys and native subprotocols. It does
+not prove desktop rendering or navigation; see the developer-server finding for
+the recorded browser validation.
+
 Findings retain the flags and profile choices of their original experiments.
 Old wrapper names have been expanded into these entry points; long commands in
 historical notes intentionally preserve their evidence scope. Older findings

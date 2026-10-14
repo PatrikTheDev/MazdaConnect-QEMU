@@ -66,16 +66,28 @@ case "$action" in
         task build-ui --kernel-profile vmsplit2g
         ;;
     start|restart)
+        instance=${MAZDA_INSTANCE:-live}
+        [[ $instance =~ ^[a-z][a-z0-9-]{0,31}$ ]] || {
+            echo 'MAZDA_INSTANCE must be 1..32 lowercase letters, digits or hyphens, starting with a letter.' >&2; exit 2;
+        }
         mode=boot
         [[ $action != restart ]] || mode=run
-        exec docker compose -f compose.software.yaml run --rm --name mazda-software-live --service-ports lab \
+        dev_ports=()
+        for argument in "$@"; do
+            if [[ $argument == --developer-mode || $argument == --remote-gui ]]; then
+                dev_ports=(--publish "127.0.0.1:${MAZDA_HTTP_PORT:-8080}:8080" --publish 127.0.0.1:2700:2700
+                           --publish 127.0.0.1:2766:2766 --publish 127.0.0.1:2800:2800)
+            fi
+        done
+        exec docker compose -f compose.software.yaml run --rm --name "mazda-software-$instance" \
+            --publish "127.0.0.1:${MAZDA_VNC_PORT:-5901}:5900" "${dev_ports[@]}" lab \
             python3 scripts/software/task.py "$mode" --kernel-profile vmsplit2g \
             --renderer llvmpipe --intro-race-fix --time-deadline-fix --websockets-queue-fix "$@"
         ;;
     view)
         case "$(uname -s)" in
-            Darwin) open vnc://127.0.0.1:5901 ;;
-            *) echo 'Connect your VNC client to 127.0.0.1:5901 (password: mazda).' ;;
+            Darwin) open "vnc://127.0.0.1:${MAZDA_VNC_PORT:-5901}" ;;
+            *) echo "Connect your VNC client to 127.0.0.1:${MAZDA_VNC_PORT:-5901} (password: mazda)." ;;
         esac
         ;;
     probe) task opera "$@" ;;

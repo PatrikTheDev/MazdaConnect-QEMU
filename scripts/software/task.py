@@ -6,6 +6,7 @@ import os
 from pathlib import Path
 import subprocess
 import sys
+from runtime import instance_name, snapshot
 
 mode, *args = sys.argv[1:]
 jobs = {
@@ -16,11 +17,20 @@ jobs = {
 if mode not in (*jobs, 'build', 'build-ui', 'kernel'):
     raise SystemExit('Unknown software task: ' + mode)
 Path('/software').mkdir(exist_ok=True)
+if mode in ('boot', 'run'):
+    instance = instance_name(os.environ.get('MAZDA_INSTANCE', 'live'))
+    Path('/software/instances').mkdir(exist_ok=True)
+    run_lock = open('/software/instances/' + instance + '.lock', 'w')
+    try:
+        fcntl.flock(run_lock, fcntl.LOCK_EX | fcntl.LOCK_NB)
+    except BlockingIOError:
+        raise SystemExit('Software instance is already running: ' + instance)
+    os.set_inheritable(run_lock.fileno(), True)
 lock = open('/software/active.lock', 'w')
 try:
     fcntl.flock(lock, fcntl.LOCK_EX | fcntl.LOCK_NB)
 except BlockingIOError:
-    raise SystemExit('Another software build or guest is active. Stop it before running this recipe.')
+    raise SystemExit('Another software build or probe is active. Wait for it before running this recipe. Legacy live guests also hold this lock.')
 os.set_inheritable(lock.fileno(), True)
 if mode == 'kernel':
     os.execv(sys.executable,[sys.executable,'scripts/software/build_kernel.py',*args])
@@ -41,4 +51,10 @@ if mode != 'run':
     subprocess.run(build, check=True)
 if mode in jobs:
     script, defaults = jobs[mode]
+    if mode == 'vnc':
+        os.environ['MAZDA_INSTANCE'] = 'vnc-test'
+    if mode in ('boot', 'run'):
+        profile_path = snapshot(instance)
+        lock.close()
+        args += ['--profile', str(profile_path)]
     os.execv(sys.executable, [sys.executable, 'scripts/software/' + script, *defaults, *args])

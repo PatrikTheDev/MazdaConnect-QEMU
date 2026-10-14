@@ -1,23 +1,27 @@
 """Run a persistent software-rendered guest with native QEMU VNC output."""
 import argparse
 import json
+import os
 from pathlib import Path
 import queue
 import signal
 import subprocess
-import tempfile
 import threading
 import time
 
 from qemu_profile import software_command
 from vnc_auth import VNC_PASSWORD
 from audio_backend import AudioBackend
+from runtime import instance_name, snapshot, state_path
 
 
 def main():
     parser = argparse.ArgumentParser(description=__doc__)
+    parser.add_argument('--profile', type=Path, help=argparse.SUPPRESS)
     parser.add_argument('--seconds', type=int, help='Stop after this many seconds; useful for reproducible diagnostics')
     parser.add_argument('--test-page', action='store_true', help='Show the controlled browser color/text page')
+    parser.add_argument('--developer-mode', action='store_true', help='Enable the vehicle developer flag and remote GUI at http://127.0.0.1:8080/')
+    parser.add_argument('--remote-gui', action='store_true', help='Enable developer mode and use the desktop browser as the sole GUI client')
     parser.add_argument('--renderer', choices=('softpipe', 'llvmpipe'), default='softpipe')
     parser.add_argument('--websockets-queue-fix', action='store_true', help='Apply the documented opt-in original GUI queue correction')
     parser.add_argument('--time-deadline-fix', action='store_true', help='Enable original time services with the documented deadline clock patch')
@@ -28,6 +32,10 @@ def main():
     parser.add_argument('--microphone-tone', type=int, default=0, help='Simulated microphone frequency, 0 for silence')
     parser.add_argument('--record-audio', action='store_true', help='Record speaker PCM alongside live diagnostics')
     args = parser.parse_args()
+    args.developer_mode = args.developer_mode or args.remote_gui
+    instance = instance_name(os.environ.get('MAZDA_INSTANCE', 'live'))
+    if args.developer_mode and args.test_page:
+        parser.error('--developer-mode requires the original GUI')
     if args.websockets_queue_fix and args.test_page:
         parser.error('--websockets-queue-fix requires the original GUI')
     if args.time_deadline_fix and args.test_page:
@@ -40,18 +48,20 @@ def main():
         parser.error('Use a nonnegative start delay and at least 10 seconds when bounded')
     if not 0 <= args.microphone_tone <= 3000:
         parser.error('Microphone frequency must be between 0 and 3000 Hz')
-    home = Path(tempfile.mkdtemp(prefix='live-', dir='/software'))
+    profile_path = args.profile or snapshot(instance)
+    home = profile_path.parent
     disk = home / 'output.ext4'
     with disk.open('wb') as stream:
         stream.truncate(128 * 1024**2)
     subprocess.run(['mkfs.ext4', '-q', '-F', '-L', 'MAZDA_SOFTWARE', str(disk)], check=True)
-    profile = json.loads(Path('/software/guest/profile.json').read_text())
+    profile = json.loads(profile_path.read_text())
     if not profile.get('software_opera'):
         raise SystemExit('The current guest lacks the Opera overlay. Run just start to build it.')
     profile['disks'].append({'path': str(disk), 'read_only': False})
-    cmd = software_command(profile, live=True, audio_dir=home if not args.test_page else None)
+    cmd = software_command(profile, live=True, audio_dir=home if not args.test_page else None,
+                           developer_mode=args.developer_mode)
     cmd += ['-qmp', 'unix:' + str(home / 'qmp.sock') + ',server=on,wait=off']
-    Path('/software/live.json').write_text(json.dumps({'directory': str(home), 'qmp': str(home / 'qmp.sock')}))
+    state_path(instance).write_text(json.dumps({'directory': str(home), 'qmp': str(home / 'qmp.sock')}))
     audio = AudioBackend(home, args.microphone_tone, args.record_audio).start() if not args.test_page else None
     try:
         process = subprocess.Popen(cmd, stdin=subprocess.PIPE, stdout=subprocess.PIPE,
@@ -72,8 +82,10 @@ def main():
         stopping = True
     signal.signal(signal.SIGINT, stop)
     signal.signal(signal.SIGTERM, stop)
-    print('VNC: vnc://127.0.0.1:5901 — run just view in another terminal.', flush=True)
+    print(f'VNC: vnc://127.0.0.1:{os.environ.get("MAZDA_VNC_PORT", "5901")} — run just view in another terminal.', flush=True)
     print('VNC password: ' + VNC_PASSWORD, flush=True)
+    if args.developer_mode:
+        print(f'Remote GUI: http://127.0.0.1:{os.environ.get("MAZDA_HTTP_PORT", "8080")}/ (WebSockets: 2700, 2766, 2800).', flush=True)
     print('Ctrl-C stops the guest and saves its logs. Retained disk: ' + str(disk), flush=True)
     startup = f'''mkdir -p /tmp/software /tmp/lab-wayland
 mount -t ext4 $(/bin/busybox findfs LABEL=MAZDA_SOFTWARE) /tmp/software
@@ -105,11 +117,19 @@ echo SOFTWARE_LIVE_STARTED
     else:
         startup = startup.replace('sleep ' + str(args.start_delay) + '\n', '/lab-software/load-audio\nsleep ' + str(args.start_delay) + '\n', 1)
         startup = startup.replace('. /lab-software/start-services', 'export LAB_VIP_SERVICE=1 LAB_TAU_STATE=connected LAB_AUDIO_SERVICES=1\n. /lab-software/start-services')
+    if args.developer_mode:
+        startup = startup.replace('. /lab-software/start-services',
+                                  'mkdir -p /tmp/mnt/data\n/jci/scripts/developer_mode.sh on\n. /lab-software/start-services')
+        startup = startup.replace('sleep 5\n/lab-software/run-opera',
+                                  '/lab-software/start-dev-server || { echo LAB_DEV_SERVER_FAILED; poweroff -f; }\nsleep 5\n/lab-software/run-opera')
+    if args.remote_gui:
+        startup = startup.replace('/lab-software/run-opera -u /jci/gui/index.html > /tmp/software/opera.log 2>&1 &\n',
+                                  'echo LAB_REMOTE_GUI: waiting for the desktop browser\n')
     started = time.monotonic()
     sent = False
     shutdown_at = None
     try:
-        with Path('runs/software-live.log').open('w') as log:
+        with Path(f'runs/software-{instance}.log').open('w') as log:
             while True:
                 if args.seconds is not None and time.monotonic()-started >= args.seconds:
                     stopping = True
@@ -144,11 +164,11 @@ echo SOFTWARE_LIVE_STARTED
         if audio:
             audio.close()
         subprocess.run(['e2fsck', '-p', '-E', 'journal_only', str(disk)], check=True)
-        for name in ('websockets-queue-fix.json', 'time-deadline-fix.json', 'intro-race-fix.json', 'compositor.log', 'opera.log', 'sm.log', 'syslog.log', 'smevents.txt', 'nativegui.log', 'frame.ppm', 'vip-service.log', 'vim.log', 'audio-config.log', 'display.log'):
+        for name in ('websockets-queue-fix.json', 'time-deadline-fix.json', 'intro-race-fix.json', 'browser-compat.json', 'compositor.log', 'opera.log', 'sm.log', 'syslog.log', 'smevents.txt', 'nativegui.log', 'frame.ppm', 'vip-service.log', 'vim.log', 'audio-config.log', 'display.log', 'dev-server.log'):
             subprocess.run(['debugfs', '-R', f'dump /{name} {home / name}', str(disk)],
                            stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL, check=True)
             if (home / name).exists() and name.endswith('.log'):
-                Path('runs/software-live-' + name).write_bytes((home / name).read_bytes())
+                Path(f'runs/software-{instance}-' + name).write_bytes((home / name).read_bytes())
         print('Saved live guest diagnostics: ' + str(home), flush=True)
     if process.returncode:
         raise SystemExit(process.returncode)

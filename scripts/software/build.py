@@ -58,6 +58,9 @@ if args.opera:
     from build_transition_trace import build as build_transition_trace
     files.append(('lab-software/Transitions-trace.js', build_transition_trace(home), 0o644))
     files.append(('lab-software/transition-trace.json', (home / 'transition-trace.json').read_bytes(), 0o644))
+    from build_browser_compat import build as build_browser_compat
+    files.append(('lab-software/Transitions-browser-compat.js', build_browser_compat(home), 0o644))
+    files.append(('lab-software/browser-compat.json', (home / 'browser-compat.json').read_bytes(), 0o644))
     sampler = home / 'sample-process'
     subprocess.run(['arm-linux-gnueabi-gcc', '-static', '-O2', '-Wall', '-Wextra', '-Werror',
                     'src/tools/sample-process.c', '-o', str(sampler)], check=True)
@@ -128,6 +131,14 @@ if args.opera:
     script += '/bin/busybox insmod /lab-software/mazda_vip.ko\n'
     script += '/bin/busybox insmod /lab-software/mazda_gpio.ko "$@"\n'
     files.append(('lab-software/load-input', script.encode(), 0o755))
+    modules.clear()
+    add_module('virtio_net')
+    network_script = '#!/bin/sh\nset -eu\n'
+    for source in modules.values():
+        files.append(('lab-software/' + source.name, source.read_bytes(), 0o644))
+        network_script += '/bin/busybox insmod /lab-software/' + source.name + '\n'
+    files.append(('lab-software/load-network', network_script.encode(), 0o755))
+    files.append(('lab-software/start-dev-server', Path('overlays/software/start-dev-server').read_bytes(), 0o755))
     from build_audio import build as build_audio, alsa_adapter, service_config
     audio_module = build_audio(home, kernel['version'], kernel['headers'])
     files.append(('lab-software/mazda_hda_mic.ko', audio_module.with_name('mazda_hda_mic.ko').read_bytes(), 0o644))

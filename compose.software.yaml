@@ -14,7 +14,11 @@ services:
       - reference:/lab:ro
       - software-data:/software
     ports:
-      - "127.0.0.1:5901:5900"
+      - "127.0.0.1:${MAZDA_VNC_PORT:-5901}:5900"
+    environment:
+      MAZDA_INSTANCE: ${MAZDA_INSTANCE:-live}
+      MAZDA_VNC_PORT: ${MAZDA_VNC_PORT:-5901}
+      MAZDA_HTTP_PORT: ${MAZDA_HTTP_PORT:-8080}
 volumes:
   reference:
     external: true
