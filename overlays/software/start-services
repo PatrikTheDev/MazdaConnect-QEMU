@@ -64,4 +64,10 @@ fi
 if [ "${LAB_TIME_SERVICES:-0}" = 1 ]; then
     lab_sm_config="${lab_sm_config%.conf}-time.conf"
 fi
+if [ "${LAB_FACTORY_DEBUG:-0}" = 1 ]; then
+    cp /lab-software/index-factory-debug.html /jci/gui/index.html || return 1
+    cp /lab-software/factory-debug.json "$LAB_LOG_DIR/factory-debug.json" || return 1
+    lab_sm_config="${lab_sm_config%.conf}-factory.conf"
+    echo 'LAB_FACTORY_DEBUG enabled: original jciTestDiag and lab keyboard shortcuts'
+fi
 /jci/sm/sm -f "$lab_sm_config" -e "$LAB_LOG_DIR/smevents.txt" > "$LAB_LOG_DIR/sm.log" 2>&1 &

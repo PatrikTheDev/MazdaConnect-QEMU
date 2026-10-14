@@ -43,7 +43,7 @@ status:
 capture:
     docker compose -f compose.software.yaml run --rm lab python3 scripts/software/control.py capture
 
-# Send a key: right/left/up/down/ret, backspace (Back), m/n (rotary).
+# Send navigation, rotary (m/n), or factory-debug keys (f2/f3/f4).
 key key:
     docker compose -f compose.software.yaml run --rm lab python3 scripts/software/control.py key "$1"
 

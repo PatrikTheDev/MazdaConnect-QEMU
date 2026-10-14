@@ -58,6 +58,10 @@ if args.opera:
     from build_transition_trace import build as build_transition_trace
     files.append(('lab-software/Transitions-trace.js', build_transition_trace(home), 0o644))
     files.append(('lab-software/transition-trace.json', (home / 'transition-trace.json').read_bytes(), 0o644))
+    from build_factory_debug import build as build_factory_debug, service_config as factory_service_config
+    files.append(('lab-software/index-factory-debug.html', build_factory_debug(home), 0o644))
+    files.append(('lab-software/factory-debug.json', (home / 'factory-debug.json').read_bytes(), 0o644))
+    files.append(('lab-software/factory-debug.js', Path('src/software/factory-debug.js').read_bytes(), 0o644))
     sampler = home / 'sample-process'
     subprocess.run(['arm-linux-gnueabi-gcc', '-static', '-O2', '-Wall', '-Wextra', '-Werror',
                     'src/tools/sample-process.c', '-o', str(sampler)], check=True)
@@ -152,6 +156,10 @@ if args.opera:
     files.append(('lab-software/sm-time.conf', time_service_config(Path('overlays/software/sm.conf').read_bytes()), 0o644))
     files = [(name, b'plugin = ivi, software, xkb\ninput = /dev/input/event1, /dev/input/event2\nxkbmap = /usr/share/wayland/evdev-pc105-us.xkm\n' if name.endswith('/compositor.conf') else data, mode) for name, data, mode in files]
     files.append(('lab-software/sm.conf', Path('overlays/software/sm.conf').read_bytes(), 0o644))
+    files += [(name.replace('.conf', '-factory.conf'), factory_service_config(data), mode)
+              for name, data, mode in files if name in (
+                  'lab-software/sm.conf', 'lab-software/sm-audio.conf',
+                  'lab-software/sm-time.conf', 'lab-software/sm-audio-time.conf')]
     directories += ['lab-software/runtime']
     runtime = Path('/software/runtime-tree')
     runtime.mkdir(exist_ok=True)

@@ -10,7 +10,7 @@ import zlib
 def main():
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument('action', choices=('status', 'capture', 'key'))
-    parser.add_argument('key', nargs='?', choices=('left', 'right', 'up', 'down', 'ret', 'esc', 'backspace', 'm', 'n'))
+    parser.add_argument('key', nargs='?', choices=('left', 'right', 'up', 'down', 'ret', 'esc', 'backspace', 'm', 'n', 'f2', 'f3', 'f4'))
     args = parser.parse_args()
     if (args.action == 'key') != (args.key is not None):
         parser.error('The key action requires a supported key name')

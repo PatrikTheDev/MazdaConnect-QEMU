@@ -121,6 +121,15 @@ Navigation, radio reception, Bluetooth device integration, and complete vehicle
 behavior are not validated. Vivante GPU emulation is separate research and is not
 required for this software path. See the [latest rendering evidence](docs/findings/0029-winston-fixed-point-coordinates.md).
 
+## Factory-menu debugging
+
+`just start --factory-debug` enables the original diagnostics service and lab
+keyboard shortcuts. Once the home screen is ready, use `just key f2` for the
+diagnostics keypad, `just key f3` to toggle JCI Test Mode, and `just key f4` to
+request its native script menu (command 11). These also work from a VNC keyboard.
+See the [factory-menu guide](docs/factory-menu.md) for the event path, numbered
+tests, script actions, and validation limitations.
+
 ## Tests and research
 
 Firmware-free checks, suitable for public CI:

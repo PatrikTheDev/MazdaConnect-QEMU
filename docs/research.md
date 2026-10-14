@@ -56,6 +56,7 @@ just dev software kernel_layout_report /software/RETAINED-RUN
 just dev software frame_report /software/RETAINED-RUN --timeline
 just dev software transition_report /software/RETAINED-RUN
 just dev software inspect_abi jci/lib/libjci.so 0xf1020 0xf14f4
+just dev software factory_catalogue
 ```
 
 Build/run commands should use the coordinator `task` so its exclusive lock protects
@@ -75,6 +76,9 @@ historical notes intentionally preserve their evidence scope. Older findings
 describe the state at their recorded date, not the latest working UI.
 
 Run `just report /software/RETAINED-RUN` for the usual service-health summary.
+Factory-menu access and its original command handlers are described in
+[factory-menu debugging](factory-menu.md). Use `just start --factory-debug` for
+the opt-in live profile; its `LAB_FACTORY_EVENT` lines record diagnostics events.
 Other reports use `just dev software SCRIPT /software/RETAINED-RUN`. Copying a
 runtime disk, core, or sysroot into a public report can expose proprietary code;
 share sanitized summaries instead.
